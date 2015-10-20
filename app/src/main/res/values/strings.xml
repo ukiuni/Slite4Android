@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Slite</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="mail">mail</string>
+    <string name="password">password</string>
+    <string name="signin">signin</string>
+    <string name="fail_to_signin">Fail to Singin</string>
+    <string name="appends_url_to_content">appends to content</string>
+    <string name="appends_to_content">appends to content</string>
+    <string name="fail_to_get_content">Fail to get content</string>
+    <string name="fail_to_put_content">Fail to put content</string>
+    <string name="success_to_put_content">Putting content completed</string>
+
+    <string name="host">host</string>
+    <string name="edit">edit</string>
+    <string name="new_account">New Account</string>
+    <string name="select_account">Select Account</string>
+    <string name="save">save</string>
+    <string name="loading">Loading...</string>
+    <string name="create_content">Create Content</string>
+</resources>

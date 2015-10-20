@@ -1,0 +1,17 @@
+{
+  "name": "AppiumServer",
+  "version": "1.0.0",
+  "description": "npm for run appium server",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "startAppium": "node ./node_modules/appium/bin/appium --pre-launch --app-pkg com.ukiuni.slite --app-activity .MainActivity --platform-name Android --app ../../../../SliteForAndroid/app/build/outputs/apk/app-debug.apk"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "appium": "^1.4.1"
+  }
+}
