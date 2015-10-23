@@ -11,7 +11,11 @@
     <string name="appends_to_content">appends to content</string>
     <string name="fail_to_get_content">Fail to get content</string>
     <string name="fail_to_put_content">Fail to put content</string>
+    <string name="fail_to_delete_content">Fail to delete content</string>
+
     <string name="success_to_put_content">Putting content completed</string>
+
+    <string name="confirm_delete_content">Delete content?</string>
 
     <string name="host">host</string>
     <string name="edit">edit</string>
@@ -20,4 +24,7 @@
     <string name="save">save</string>
     <string name="loading">Loading...</string>
     <string name="create_content">Create Content</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
 </resources>

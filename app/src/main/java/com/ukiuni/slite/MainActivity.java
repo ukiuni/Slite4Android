@@ -86,7 +86,7 @@ public class MainActivity extends SliteBaseActivity {
                 MyAccount account = new Select().from(MyAccount.class).byIds(spinner.getSelectedItemId()).querySingle();
                 Slite slite = SliteApplication.getInstance().getSlite();
                 slite.setHost(account.host);
-                slite.setSessionKey(account.sessionKey);
+                slite.setMyAccount(account);
 
                 TopActivity.start(MainActivity.this, account.id);
             }

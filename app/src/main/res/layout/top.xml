@@ -13,8 +13,7 @@
         android:id="@+id/contentListView"
         android:layout_width="fill_parent"
         android:layout_height="0px"
-        android:layout_weight="1"
-        android:background="#0F0"></ListView>
+        android:layout_weight="1"></ListView>
 
     <Button
         android:id="@+id/createContentButton"

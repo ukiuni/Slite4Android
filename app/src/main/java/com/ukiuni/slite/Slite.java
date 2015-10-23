@@ -33,8 +33,8 @@ public class Slite {
     private static final String POST = "POST";
     private static final String PUT = "PUT";
     private static final String DELETE = "DELETE";
-    private String sessionKey;
     private String host = "http://192.168.56.1:3030";
+    private MyAccount myAccount;
 
     public Slite() {
 
@@ -44,8 +44,9 @@ public class Slite {
         this.host = host;
     }
 
-    public Slite(String sessionKey) {
-        this.sessionKey = sessionKey;
+    public Slite(MyAccount myAccount) {
+        this.myAccount = myAccount;
+        setHost(this.myAccount.host);
     }
 
     public MyAccount signin(final String mail, final String password) throws IOException {
@@ -62,7 +63,7 @@ public class Slite {
             myAccount.sessionKey = respJSON.getJSONObject("sessionKey").getString("secret");
             myAccount.lastLoginedAt = new Date();
             myAccount.host = connectHost;
-            this.sessionKey = myAccount.sessionKey;
+            this.myAccount = myAccount;
             return myAccount;
         } catch (JSONException e) {
             throw new IOException(e);
@@ -125,13 +126,9 @@ public class Slite {
         return response;
     }
 
-    public void setSessionKey(String sessionKey) {
-        this.sessionKey = sessionKey;
-    }
-
     public List<Content> loadMyContent() throws IOException {
         try {
-            JSONArray contentArray = httpJA(GET, host + "/api/content", SS.map("sessionKey", sessionKey));
+            JSONArray contentArray = httpJA(GET, host + "/api/content", SS.map("sessionKey", this.myAccount.sessionKey));
             List<Content> contentList = new ArrayList<Content>(contentArray.length());
             for (int i = 0; i < contentArray.length(); i++) {
                 JSONObject contentJSON = contentArray.getJSONObject(i);
@@ -164,12 +161,13 @@ public class Slite {
         content.owner.id = contentJSON.getLong("ownerId");
         content.owner.name = account.getString("name");
         content.owner.iconUrl = account.getString("iconUrl");
+        content.loadAccount = myAccount;
         return content;
     }
 
     public Content loadContent(String accessKey) throws IOException {
         try {
-            JSONObject contentJson = httpJ(GET, host + "/api/content/" + accessKey, SS.map("sessionKey", sessionKey));
+            JSONObject contentJson = httpJ(GET, host + "/api/content/" + accessKey, SS.map("sessionKey", this.myAccount.sessionKey));
             return convertContent(contentJson);
         } catch (JSONException e) {
             throw new IOException(e);
@@ -178,7 +176,7 @@ public class Slite {
 
     public Content appendContent(String accessKey, String appendsText) throws IOException {
         try {
-            JSONObject contentJson = httpJ(PUT, host + "/api/content/" + accessKey, SS.map("sessionKey", this.sessionKey).p("article", appendsText).p("appends", "before"));
+            JSONObject contentJson = httpJ(PUT, host + "/api/content/" + accessKey, SS.map("sessionKey", this.myAccount.sessionKey).p("article", appendsText).p("appends", "before"));
             return convertContent(contentJson);
         } catch (JSONException e) {
             throw new IOException(e);
@@ -187,7 +185,7 @@ public class Slite {
 
     public Content updateContent(Content content) throws IOException {
         try {
-            JSONObject contentJson = httpJ(PUT, host + "/api/content/" + content.accessKey, SS.map("sessionKey", this.sessionKey).p("title", content.title).p("article", content.article));
+            JSONObject contentJson = httpJ(PUT, host + "/api/content/" + content.accessKey, SS.map("sessionKey", this.myAccount.sessionKey).p("title", content.title).p("article", content.article));
             return convertContent(contentJson);
         } catch (JSONException e) {
             throw new IOException(e);
@@ -196,8 +194,20 @@ public class Slite {
 
     public Content createContent(String title, String article) throws IOException {
         try {
-            JSONObject contentJson = httpJ(POST, host + "/api/content/", SS.map("sessionKey", this.sessionKey).p("title", title).p("article", article));
+            JSONObject contentJson = httpJ(POST, host + "/api/content/", SS.map("sessionKey", this.myAccount.sessionKey).p("title", title).p("article", article));
             return convertContent(contentJson);
+        } catch (JSONException e) {
+            throw new IOException(e);
+        }
+    }
+
+    public void setMyAccount(MyAccount myAccount) {
+        this.myAccount = myAccount;
+    }
+
+    public void deleteContent(Content content) throws IOException {
+        try {
+            httpJ(DELETE, host + "/api/content/" + content.accessKey, SS.map("sessionKey", this.myAccount.sessionKey));
         } catch (JSONException e) {
             throw new IOException(e);
         }

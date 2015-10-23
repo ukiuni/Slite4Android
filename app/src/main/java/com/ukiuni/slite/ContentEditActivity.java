@@ -3,6 +3,7 @@ package com.ukiuni.slite;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -80,6 +81,10 @@ public class ContentEditActivity extends SliteBaseActivity {
                         finish();
                     }
 
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.e("", "~~~~~~~~~~~", e);
+                    }
                 }, R.string.fail_to_put_content);
             }
         });

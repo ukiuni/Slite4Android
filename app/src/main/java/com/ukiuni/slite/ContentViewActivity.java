@@ -12,6 +12,7 @@ import android.widget.TextView;
 import com.raizlabs.android.dbflow.sql.language.Select;
 import com.ukiuni.slite.model.Content;
 import com.ukiuni.slite.util.Async;
+import com.ukiuni.slite.util.ConfirmDialog;
 
 import java.text.SimpleDateFormat;
 
@@ -90,6 +91,31 @@ public class ContentViewActivity extends SliteBaseActivity {
                 @Override
                 public void onClick(View v) {
                     ContentEditActivity.start(ContentViewActivity.this, viewingContent);
+                }
+            });
+            final Button deleteButton = (Button) findViewById(R.id.deleteButton);
+            deleteButton.setVisibility(View.VISIBLE);
+            deleteButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    ConfirmDialog dialog = new ConfirmDialog(ContentViewActivity.this, R.string.confirm_delete_content, new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            Async.start(new Async.Task() {
+                                @Override
+                                public void work(Async.Handle handle) throws Throwable {
+                                    SliteApplication.getInstance().getSlite().deleteContent(viewingContent);
+                                    viewingContent.delete();
+                                }
+
+                                @Override
+                                public void onError(Throwable e) {
+                                    Log.e("", "---------", e);
+                                }
+                            }, R.string.fail_to_delete_content);
+                        }
+                    });
+                    dialog.show();
                 }
             });
         }

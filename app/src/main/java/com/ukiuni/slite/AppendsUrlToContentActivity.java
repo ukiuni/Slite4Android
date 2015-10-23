@@ -92,7 +92,7 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
                         Slite slite = new Slite();
                         Content targetContent = (Content) contentSpinner.getSelectedItem();
                         slite.setHost(targetContent.loadAccount.host);
-                        slite.setSessionKey(targetContent.loadAccount.sessionKey);
+                        slite.setMyAccount(targetContent.loadAccount);
                         Content content = slite.appendContent(targetContent.accessKey, editText.getText().toString());
                         content.save();
                     }

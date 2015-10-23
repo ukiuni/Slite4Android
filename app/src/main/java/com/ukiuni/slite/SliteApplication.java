@@ -5,6 +5,8 @@ import android.app.Application;
 import android.content.SharedPreferences;
 
 import com.raizlabs.android.dbflow.config.FlowManager;
+import com.raizlabs.android.dbflow.sql.language.Select;
+import com.ukiuni.slite.model.MyAccount;
 import com.ukiuni.slite.util.Async;
 
 
@@ -14,8 +16,7 @@ import com.ukiuni.slite.util.Async;
 public class SliteApplication extends Application {
     public static final Slite slite = new Slite();
     public static SharedPreferences pref;
-    public static final String PREF_KEY_SLITE_KEY = "PREF_KEY_SLITE_KEY";
-    public static final String PREF_KEY_SLITE_HOST = "PREF_KEY_SLITE_HOST";
+    public static final String PREF_KEY_MYACCOUNT_ID = "PREF_KEY_MYACCOUNT_ID";
 
     public static SliteApplication instance;
     private Activity currentActivity;
@@ -32,11 +33,9 @@ public class SliteApplication extends Application {
     public void onCreate() {
         super.onCreate();
         this.pref = getSharedPreferences(SliteApplication.class.getName(), MODE_PRIVATE);
-        if (this.pref.contains(PREF_KEY_SLITE_KEY)) {
-            slite.setSessionKey(this.pref.getString(PREF_KEY_SLITE_KEY, null));
-        }
-        if (this.pref.contains(PREF_KEY_SLITE_HOST)) {
-            slite.setHost(this.pref.getString(PREF_KEY_SLITE_HOST, null));
+        if (this.pref.contains(PREF_KEY_MYACCOUNT_ID)) {
+            MyAccount myAccount = new Select().from(MyAccount.class).byIds(this.pref.getLong(PREF_KEY_MYACCOUNT_ID, 0)).querySingle();
+            slite.setMyAccount(myAccount);
         }
         FlowManager.init(this);
         Async.init(this);
