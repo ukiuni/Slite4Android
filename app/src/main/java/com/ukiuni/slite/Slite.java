@@ -1,9 +1,12 @@
 package com.ukiuni.slite;
 
+import android.graphics.Bitmap;
 import android.support.annotation.NonNull;
+import android.util.Log;
 
 import com.ukiuni.slite.model.Account;
 import com.ukiuni.slite.model.Content;
+import com.ukiuni.slite.model.Group;
 import com.ukiuni.slite.model.MyAccount;
 import com.ukiuni.slite.util.JSONDate;
 import com.ukiuni.slite.util.SS;
@@ -13,6 +16,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -24,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Created by tito on 15/10/08.
@@ -49,6 +54,10 @@ public class Slite {
         setHost(this.myAccount.host);
     }
 
+    public MyAccount currentAccount() {
+        return this.myAccount;
+    }
+
     public MyAccount signin(final String mail, final String password) throws IOException {
         try {
             String connectHost = this.host;
@@ -71,7 +80,9 @@ public class Slite {
     }
 
     private JSONObject httpJ(String method, String url, Map<String, String> form) throws IOException, JSONException {
-        return new JSONObject(http(method, url, form));
+        String json = http(method, url, form);
+        Log.d("", "------" + json);
+        return new JSONObject(json);
 
     }
 
@@ -165,10 +176,52 @@ public class Slite {
         return content;
     }
 
+    @NonNull
+    private Group convertGroup(JSONObject contentJSON) throws JSONException {
+        Group group = new Group();
+        group.id = contentJSON.getLong("id");
+        group.accessKey = contentJSON.getString("accessKey");
+        group.name = contentJSON.getString("name");
+        if (contentJSON.has("Contents")) {
+            List<Content> contents = new ArrayList<Content>();
+            JSONArray contentsArray = contentJSON.getJSONArray("Contents");
+            for (int i = 0; i < contentsArray.length(); i++) {
+                contents.add(convertContent(contentsArray.getJSONObject(i)));
+            }
+            group.contents = contents;
+        }
+        return group;
+    }
+
     public Content loadContent(String accessKey) throws IOException {
         try {
             JSONObject contentJson = httpJ(GET, host + "/api/content/" + accessKey, SS.map("sessionKey", this.myAccount.sessionKey));
             return convertContent(contentJson);
+        } catch (JSONException e) {
+            throw new IOException(e);
+        }
+    }
+
+
+    public List<Group> loadMyGroups() throws IOException {
+        try {
+            JSONArray groupArray = httpJA(GET, host + "/api/groups/self", SS.map("sessionKey", this.myAccount.sessionKey));
+            List<Group> groupList = new ArrayList<Group>(groupArray.length());
+            for (int i = 0; i < groupArray.length(); i++) {
+                JSONObject contentJSON = groupArray.getJSONObject(i);
+                Group group = convertGroup(contentJSON);
+                groupList.add(group);
+            }
+            return groupList;
+        } catch (JSONException e) {
+            throw new IOException(e);
+        }
+    }
+
+    public Group loadGroup(String accessKey) throws IOException {
+        try {
+            JSONObject json = httpJ(GET, host + "/api/groups/" + accessKey, SS.map("sessionKey", this.myAccount.sessionKey));
+            return convertGroup(json);
         } catch (JSONException e) {
             throw new IOException(e);
         }
@@ -208,6 +261,110 @@ public class Slite {
     public void deleteContent(Content content) throws IOException {
         try {
             httpJ(DELETE, host + "/api/content/" + content.accessKey, SS.map("sessionKey", this.myAccount.sessionKey));
+        } catch (JSONException e) {
+            throw new IOException(e);
+        }
+    }
+
+    public static interface Progress {
+        public void sended(int current);
+    }
+
+    public String uploadImage(String accessKey, Bitmap thumbnail, Progress... progress) throws IOException {
+        return uploadImage(accessKey, thumbnail, null, null, progress);
+    }
+
+    public String uploadImage(String accessKey, InputStream in, String name, Progress... progress) throws IOException {
+        return uploadImage(accessKey, null, in, name, progress);
+    }
+
+    public String uploadImage(String accessKey, Bitmap thumbnail, InputStream fileIn, String name, Progress... progress) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) new URL(host + "/api/image/" + accessKey).openConnection();
+        String boundary = "*****" + UUID.randomUUID().toString() + "*****";
+        String crlf = "\r\n";
+        String twoHyphens = "--";
+
+        connection.setUseCaches(false);
+        connection.setRequestMethod(POST);
+        connection.setDoOutput(true);
+        connection.setDoInput(true);
+        connection.setRequestProperty("Connection", "Keep-Alive");
+        connection.setRequestProperty("Cache-Control", "no-cache");
+        connection.setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
+
+        DataOutputStream request = new DataOutputStream(
+                connection.getOutputStream());
+
+        request.writeBytes(twoHyphens + boundary + crlf);
+        request.writeBytes("Content-Disposition: form-data; name=\"imageFile\";filename=\"tmpimage.jpg\"" + crlf);
+        request.writeBytes("Content-Type: application/octet-stream" + crlf);
+        request.writeBytes("Content-Transfer-Encoding: binary" + crlf);
+        request.writeBytes(crlf);
+        Progress currentProgress = null;
+        if (null != progress && progress.length > 0) {
+            currentProgress = progress[0];
+        }
+        if (null != thumbnail) {
+            thumbnail.compress(Bitmap.CompressFormat.JPEG, 100, connection.getOutputStream());
+        } else {
+            byte[] buffer = new byte[1024 * 1024];
+            int readed = fileIn.read(buffer);
+            int totalSize = 0;
+            while (0 < readed) {
+                request.write(buffer, 0, readed);
+                totalSize += readed;
+                if (null != currentProgress) {
+                    currentProgress.sended(totalSize);
+                }
+                readed = fileIn.read(buffer);
+            }
+        }
+        request.writeBytes(crlf);
+
+        request.writeBytes(twoHyphens + boundary + crlf);
+        request.writeBytes("Content-Disposition: form-data; name=\"sessionKey\"" + crlf);
+        request.writeBytes("Content-Type: text/plain" + crlf);
+        request.writeBytes(crlf);
+        request.writeBytes(this.myAccount.sessionKey);
+        request.writeBytes(crlf);
+        if (null != name) {
+            request.writeBytes(twoHyphens + boundary + crlf);
+            request.writeBytes("Content-Disposition: form-data; name=\"name\"" + crlf);
+            request.writeBytes("Content-Type: text/plain" + crlf);
+            request.writeBytes(crlf);
+            request.writeBytes(name);
+            request.writeBytes(crlf);
+        }
+        request.writeBytes(twoHyphens + boundary + twoHyphens + crlf);
+
+        request.flush();
+        request.close();
+
+
+        String errorResponse = "";
+        InputStream errorInput = connection.getErrorStream();
+        if (null != errorInput) {
+            BufferedReader errorIn = new BufferedReader(new InputStreamReader(errorInput));
+
+            for (String line = errorIn.readLine(); line != null; line = errorIn.readLine()) {
+                errorResponse += line;
+            }
+            if (!"".equals(errorResponse)) {
+                throw new IOException(errorResponse + " ,status = " + connection.getResponseCode());
+            }
+        }
+        if (connection.getResponseCode() >= 400) {
+            throw new IOException(String.valueOf(connection.getResponseCode()));
+        }
+        BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+        String response = "";
+        for (String line = in.readLine(); line != null; line = in.readLine()) {
+            response += line;
+        }
+        JSONObject object = null;
+        try {
+            object = new JSONObject(response);
+            return object.getString("url");
         } catch (JSONException e) {
             throw new IOException(e);
         }

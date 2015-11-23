@@ -77,7 +77,7 @@
             android:layout_gravity="center_horizontal"
             android:ems="10"
             android:inputType="textEmailAddress"
-            android:text="peek@ukiuni.com"/>
+            android:text=""/>
 
         <TextView
             android:id="@+id/passwordLabel"
@@ -93,7 +93,7 @@
             android:layout_gravity="center_horizontal"
             android:ems="10"
             android:inputType="textPassword"
-            android:text="peek"/>
+            android:text=""/>
 
         <TextView
             android:id="@+id/hostLabel"
@@ -109,8 +109,7 @@
             android:layout_gravity="center_horizontal"
             android:ems="10"
             android:inputType="textUri"
-            android:text="http://192.168.11.13:3020"/>
-        <!-- slite.ukiuni.com 192.168.11.13:3020 -->
+            android:text="https://slite.ukiuni.com"/>
 
         <Button
             android:id="@+id/signinWithNewAccountButton"

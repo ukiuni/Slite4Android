@@ -10,13 +10,15 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.raizlabs.android.dbflow.sql.language.Select;
+import com.ukiuni.slite.markdown.MarkdownView;
 import com.ukiuni.slite.model.Content;
+import com.ukiuni.slite.model.MyAccount;
 import com.ukiuni.slite.util.Async;
 import com.ukiuni.slite.util.ConfirmDialog;
+import com.ukiuni.slite.util.IO;
 
 import java.text.SimpleDateFormat;
 
-import us.feras.mdv.MarkdownView;
 
 /**
  * Created by tito on 2015/10/14.
@@ -72,7 +74,10 @@ public class ContentViewActivity extends SliteBaseActivity {
                 if (null != content.imageUrl) {
                     Async.setImage(titleImage, content.imageUrl, true);
                 }
-                markdownView.loadMarkdown(content.article, "file:///android_asset/markdown.css");
+                MyAccount account = SliteApplication.getInstance().getSlite().currentAccount();
+                content.article = content.article.replaceAll("(" + account.host + "/api/image/[^\\)]*)", "$1?sessionKey=" + account.sessionKey);
+
+                markdownView.loadMarkdown(content.article, IO.assetToString(getAssets(), "markdown.css"));
                 Async.setImage(accountIconImage, content.owner.iconUrl);
                 accountNameText.setText(content.owner.name);
                 dateText.setText(new SimpleDateFormat("yyyy/MM/dd").format(content.updatedAt));
@@ -98,7 +103,7 @@ public class ContentViewActivity extends SliteBaseActivity {
             deleteButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    ConfirmDialog dialog = new ConfirmDialog(ContentViewActivity.this, R.string.confirm_delete_content, new View.OnClickListener() {
+                    final ConfirmDialog dialog = new ConfirmDialog(ContentViewActivity.this, R.string.confirm_delete_content, new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
                             Async.start(new Async.Task() {
@@ -106,6 +111,11 @@ public class ContentViewActivity extends SliteBaseActivity {
                                 public void work(Async.Handle handle) throws Throwable {
                                     SliteApplication.getInstance().getSlite().deleteContent(viewingContent);
                                     viewingContent.delete();
+                                }
+
+                                @Override
+                                public void onSuccess() {
+                                    finish();
                                 }
 
                                 @Override

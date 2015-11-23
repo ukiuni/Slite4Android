@@ -1,6 +1,7 @@
 package com.ukiuni.slite.util;
 
 import android.app.Activity;
+import android.app.NotificationManager;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -10,6 +11,7 @@ import android.os.Handler;
 import android.renderscript.Allocation;
 import android.renderscript.RenderScript;
 import android.renderscript.ScriptIntrinsicBlur;
+import android.support.v4.app.NotificationCompat;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -17,6 +19,7 @@ import com.ukiuni.slite.R;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -35,6 +38,43 @@ public class Async {
         Async.handler = new Handler();
     }
 
+    public static interface Status {
+        public void increaseProgress(int percent);
+
+        public void updateMessgae(String message);
+
+        public void updateTitle(int title);
+    }
+
+    public static Async.Status showNotifiction(int title, String message) {
+        final NotificationManager notifyManager = (NotificationManager) Async.context.getSystemService(Context.NOTIFICATION_SERVICE);
+        final NotificationCompat.Builder builder = new NotificationCompat.Builder(Async.context);
+        builder.setContentTitle(context.getString(title))
+                .setContentText(message)
+                .setSmallIcon(R.drawable.notify_icon);
+        final int id = new Random().nextInt();
+        return new Async.Status() {
+            public void increaseProgress(int percent) {
+                builder.setProgress(100, percent, false);
+                notifyManager.notify(id, builder.build());
+                if (100 <= percent) {
+                    builder.setProgress(0, 0, false);
+                }
+            }
+
+            @Override
+            public void updateTitle(int title) {
+                builder.setContentTitle(context.getString(title));
+                notifyManager.notify(id, builder.build());
+            }
+
+            public void updateMessgae(String message) {
+                builder.setContentText(message);
+                notifyManager.notify(id, builder.build());
+            }
+        };
+    }
+
     public static Handle start(final Task task, final int... errorStringId) {
         final Handle handle = new Handle();
         ProgressDialog tmpProgress = null;
@@ -48,7 +88,12 @@ public class Async {
             public void run() {
                 final Thread threadInstance = this;
                 try {
-
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            task.preExecute();
+                        }
+                    });
                     task.work(handle);
                     handler.post(new Runnable() {
                         @Override
@@ -172,6 +217,10 @@ public class Async {
     }
 
     public static class Task {
+        public void preExecute() {
+
+        }
+
         public void work(Handle handle) throws Throwable {
         }
 

@@ -1,3 +1,11 @@
 body {
-	background-color:#EEE
+	background-color:#FAFAFA;
 }
+#article {
+ 	white-space: pre;
+ 	white-space: pre-wrap;
+ 	white-space: pre-line;
+ 	white-space: -hp-pre-line;
+ 	word-wrap: break-word;
+ 	width: 100%;
+ }

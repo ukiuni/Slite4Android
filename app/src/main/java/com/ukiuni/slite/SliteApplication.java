@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.SharedPreferences;
 
+import com.raizlabs.android.dbflow.config.FlowLog;
 import com.raizlabs.android.dbflow.config.FlowManager;
 import com.raizlabs.android.dbflow.sql.language.Select;
 import com.ukiuni.slite.model.MyAccount;
@@ -32,12 +33,13 @@ public class SliteApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        FlowManager.init(this);
+        FlowLog.setMinimumLoggingLevel(FlowLog.Level.V);
         this.pref = getSharedPreferences(SliteApplication.class.getName(), MODE_PRIVATE);
         if (this.pref.contains(PREF_KEY_MYACCOUNT_ID)) {
             MyAccount myAccount = new Select().from(MyAccount.class).byIds(this.pref.getLong(PREF_KEY_MYACCOUNT_ID, 0)).querySingle();
             slite.setMyAccount(myAccount);
         }
-        FlowManager.init(this);
         Async.init(this);
         instance = this;
     }
@@ -50,5 +52,9 @@ public class SliteApplication extends Application {
     public void removeCurrentActivity() {
         this.currentActivity = null;
         Async.removeCurrentActivity();
+    }
+
+    public static MyAccount currentAccount() {
+        return getInstance().getSlite().currentAccount();
     }
 }

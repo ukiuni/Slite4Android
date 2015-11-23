@@ -4,6 +4,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 
 import com.ukiuni.slite.R;
 
@@ -25,7 +26,8 @@ public class ConfirmDialog extends Dialog {
         setContentView(R.layout.confirm_dialog);
         Button okButton = (Button) findViewById(R.id.okButton);
         Button cancelButton = (Button) findViewById(R.id.cancelButton);
-        setTitle(messageId);
+        TextView textView = (TextView) findViewById(R.id.message);
+        textView.setText(messageId);
         okButton.setOnClickListener(this.okListener);
         cancelButton.setOnClickListener(new View.OnClickListener() {
             @Override

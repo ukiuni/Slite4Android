@@ -36,7 +36,23 @@
             android:ems="10"
             android:gravity="top"
             android:paddingLeft="@dimen/activity_horizontal_margin"
-            android:paddingRight="@dimen/activity_horizontal_margin"/>
+            android:paddingRight="@dimen/activity_horizontal_margin"
+            android:visibility="gone"/>
+
+        <ImageView
+            android:id="@+id/image"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:maxHeight="10dp"
+            android:layout_gravity="center_horizontal"
+            android:scaleType="centerInside"
+            android:layout_weight="1"
+            android:ems="10"
+            android:gravity="top"
+            android:paddingLeft="@dimen/activity_horizontal_margin"
+            android:paddingRight="@dimen/activity_horizontal_margin"
+            android:background="#000000"
+            android:visibility="gone"/>
 
         <Spinner
             android:id="@+id/contentSpinner"
