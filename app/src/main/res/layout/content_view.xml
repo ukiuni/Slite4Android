@@ -37,11 +37,11 @@
                         android:layout_gravity="left|center_vertical"
                         android:layout_marginLeft="5px"
                         android:layout_marginRight="5px"
-                        android:shadowColor="#FFF"
+                        android:shadowColor="#333"
                         android:shadowDx="1.5"
                         android:shadowDy="1.5"
                         android:shadowRadius="5.5"
-                        android:textColor="#333"
+                        android:textColor="#FFF"
                         android:textSize="30dp"
                         />
                 </FrameLayout>

@@ -8,8 +8,8 @@
         android:title="@string/group"
         app:showAsAction="ifRoom"/>
     <item
-        android:id="@+id/action_settings"
+        android:id="@+id/menu_change_account"
         android:orderInCategory="100"
-        android:title="@string/action_settings"
+        android:title="@string/change_account"
         app:showAsAction="never"/>
 </menu>

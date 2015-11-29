@@ -7,28 +7,33 @@ import com.raizlabs.android.dbflow.annotation.PrimaryKey;
 import com.raizlabs.android.dbflow.annotation.Table;
 import com.raizlabs.android.dbflow.structure.BaseModel;
 
-import java.util.List;
+import java.util.Date;
 
 /**
  * Created by tito on 2015/10/11.
  */
 @Table(databaseName = SliteDatabase.NAME)
-public class Group extends BaseModel {
+public class Message extends BaseModel {
     @Column
     public long id;
     @Column
     @PrimaryKey(autoincrement = true)
     public long localId;
     @Column
-    public String name;
+    public String type;
     @Column
-    public String accessKey;
+    public String body;
     @Column
-    public String iconUrl;
+    @ForeignKey(references = {@ForeignKeyReference(columnName = "owner_id", columnType = Long.class, foreignColumnName = "id")}, saveForeignKeyModel = true)
+    public Account owner;
     @Column
     @ForeignKey(references = {@ForeignKeyReference(columnName = "local_owner_id", columnType = Long.class, foreignColumnName = "id")}, saveForeignKeyModel = true)
     public MyAccount localOwner;
-
-    transient public List<Content> contents;
-    transient public List<Channel> channels;
+    @Column
+    @ForeignKey(references = {@ForeignKeyReference(columnName = "channel_id", columnType = Long.class, foreignColumnName = "id")}, saveForeignKeyModel = true)
+    public Channel channel;
+    @Column
+    public Date createdAt;
+    @Column
+    public Date updatedAt;
 }

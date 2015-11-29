@@ -13,6 +13,7 @@ import android.renderscript.RenderScript;
 import android.renderscript.ScriptIntrinsicBlur;
 import android.support.v4.app.NotificationCompat;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import com.ukiuni.slite.R;
@@ -36,6 +37,10 @@ public class Async {
     public static void init(Context context) {
         Async.context = context;
         Async.handler = new Handler();
+    }
+
+    public static void pushToOriginalThread(Runnable runnable) {
+        handler.post(runnable);
     }
 
     public static interface Status {
@@ -150,7 +155,6 @@ public class Async {
                                 return;
                             }
                             if (null != progressDialog) {
-                                progressDialog.show();
                                 progressDialog.setContentView(R.layout.progressdialog);
                                 progressDialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
                                     @Override
@@ -158,6 +162,8 @@ public class Async {
                                         execThread.interrupt();
                                     }
                                 });
+                                progressDialog.getWindow().setLayout(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                                progressDialog.setProgressDrawable(context.getDrawable(R.drawable.tranzient));
                             }
                         }
                     }
@@ -201,10 +207,14 @@ public class Async {
     }
 
     public static void makeToast(int messageId) {
+        makeToast(context.getResources().getString(messageId));
+    }
+
+    public static void makeToast(String message) {
         if (toast != null) {
             toast.cancel();
         }
-        toast = Toast.makeText(context, messageId, Toast.LENGTH_LONG);
+        toast = Toast.makeText(context, message, Toast.LENGTH_LONG);
         toast.show();
     }
 

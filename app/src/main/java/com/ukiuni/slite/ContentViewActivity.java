@@ -15,7 +15,6 @@ import com.ukiuni.slite.model.Content;
 import com.ukiuni.slite.model.MyAccount;
 import com.ukiuni.slite.util.Async;
 import com.ukiuni.slite.util.ConfirmDialog;
-import com.ukiuni.slite.util.IO;
 
 import java.text.SimpleDateFormat;
 
@@ -77,7 +76,7 @@ public class ContentViewActivity extends SliteBaseActivity {
                 MyAccount account = SliteApplication.getInstance().getSlite().currentAccount();
                 content.article = content.article.replaceAll("(" + account.host + "/api/image/[^\\)]*)", "$1?sessionKey=" + account.sessionKey);
 
-                markdownView.loadMarkdown(content.article, IO.assetToString(getAssets(), "markdown.css"));
+                markdownView.loadMarkdown(content.article);
                 Async.setImage(accountIconImage, content.owner.iconUrl);
                 accountNameText.setText(content.owner.name);
                 dateText.setText(new SimpleDateFormat("yyyy/MM/dd").format(content.updatedAt));

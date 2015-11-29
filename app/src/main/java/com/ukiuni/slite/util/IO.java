@@ -7,6 +7,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.MediaStore;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.File;
@@ -21,17 +22,21 @@ import java.io.OutputStream;
  */
 public class IO {
     public static String asString(InputStream in) {
+        BufferedInputStream bin = new BufferedInputStream(in);
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        byte[] buffer = new byte[1024];
+        byte[] buffer = new byte[1024 * 1024];
         try {
             int readed = in.read(buffer);
-            while (readed > 0) {
+            while (readed >= 0) {
                 bout.write(buffer, 0, readed);
                 readed = in.read(buffer);
             }
             return new String(bout.toByteArray(), "UTF-8");
         } catch (IOException e) {
             throw new RuntimeException(e);
+        } finally {
+            closeQuietry(bin);
+
         }
     }
 

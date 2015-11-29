@@ -2,9 +2,11 @@ package com.ukiuni.slite;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -16,7 +18,9 @@ import android.widget.TextView;
 
 import com.raizlabs.android.dbflow.sql.builder.Condition;
 import com.raizlabs.android.dbflow.sql.language.Delete;
+import com.ukiuni.slite.adapter.ChannelArrayAdapter;
 import com.ukiuni.slite.adapter.ContentArrayAdapter;
+import com.ukiuni.slite.model.Channel;
 import com.ukiuni.slite.model.Content;
 import com.ukiuni.slite.model.Group;
 import com.ukiuni.slite.model.Group$Table;
@@ -43,7 +47,10 @@ public class GroupsActivity extends SliteBaseActivity {
 
         final Spinner spinner = (Spinner) findViewById(R.id.myGroupsSpinner);
         final MyAccount myAccount = SliteApplication.currentAccount();
+        final String spinnerSelectedPreferenceKey = "selectedSpinerIndexwith" + myAccount.id;
+        spinner.setSelection(SliteApplication.pref.getInt(spinnerSelectedPreferenceKey, 0));
         final ListView contentListView = (ListView) findViewById(R.id.contentListView);
+        final ListView channelListView = (ListView) findViewById(R.id.channelListView);
         Async.start(new Async.Task() {
             MyGroupSpinnerAdapter adapter;
 
@@ -55,11 +62,11 @@ public class GroupsActivity extends SliteBaseActivity {
                     group.localOwner = myAccount;
                     group.save();
                 }
-
                 adapter = new MyGroupSpinnerAdapter(GroupsActivity.this, groups);
                 spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                     @Override
                     public void onItemSelected(AdapterView<?> parent, View view, final int position, long id) {
+                        SliteApplication.saveDefaultGroup(adapter.getItem(position).id);
                         Async.start(new Async.Task() {
                             Group group;
 
@@ -90,6 +97,23 @@ public class GroupsActivity extends SliteBaseActivity {
                                         }
                                     });
                                 }
+                                if (null == group.channels || 0 == group.channels.size()) {
+                                    Channel channel = new Channel();
+                                    channel.name = getString(R.string.no_channel);
+                                    channelListView.setAdapter(new ChannelArrayAdapter(GroupsActivity.this, Arrays.asList(channel)));
+                                    channelListView.setOnItemClickListener(null);
+                                } else {
+                                    channelListView.setAdapter(new ChannelArrayAdapter(GroupsActivity.this, group.channels));
+                                    channelListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                                        @Override
+                                        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                                            MessageActivity.start(GroupsActivity.this, group.channels.get(position).accessKey);
+                                        }
+                                    });
+                                }
+                                SharedPreferences.Editor edit = SliteApplication.pref.edit();
+                                edit.putInt(spinnerSelectedPreferenceKey, position);
+                                edit.commit();
                             }
 
                             @Override
@@ -108,8 +132,14 @@ public class GroupsActivity extends SliteBaseActivity {
 
             @Override
             public void onSuccess() {
-                Log.v("", "succeeed --------- " + adapter.getCount());
                 spinner.setAdapter(adapter);
+                long selectedGroupId = SliteApplication.loadDefaultGroup();
+                for (int i = 0; i < adapter.getCount(); i++) {
+                    if (selectedGroupId == adapter.getItem(i).id) {
+                        spinner.setSelection(i);
+                        break;
+                    }
+                }
             }
 
             @Override
@@ -145,7 +175,7 @@ public class GroupsActivity extends SliteBaseActivity {
         }
 
         @Override
-        public Object getItem(int position) {
+        public Group getItem(int position) {
             return groups.get(position);
         }
 
@@ -175,6 +205,15 @@ public class GroupsActivity extends SliteBaseActivity {
         public View getDropDownView(int position, View convertView, ViewGroup parent) {
             return getView(position, convertView, parent);
         }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.menu_group) {
+            return false;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
 }

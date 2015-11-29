@@ -75,6 +75,10 @@ public class TopActivity extends SliteBaseActivity {
         });
     }
 
+    public static void start(Context context) {
+        start(context, SliteApplication.currentAccount().id);
+    }
+
     public static void start(Context context, long accountId) {
         Intent intent = new Intent(context, TopActivity.class);
         intent.putExtra(INTENT_KEY_MYACCOUNT_ID, accountId);

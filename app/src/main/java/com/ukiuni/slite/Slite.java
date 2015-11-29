@@ -2,12 +2,14 @@ package com.ukiuni.slite;
 
 import android.graphics.Bitmap;
 import android.support.annotation.NonNull;
-import android.util.Log;
 
 import com.ukiuni.slite.model.Account;
+import com.ukiuni.slite.model.Channel;
 import com.ukiuni.slite.model.Content;
 import com.ukiuni.slite.model.Group;
+import com.ukiuni.slite.model.Message;
 import com.ukiuni.slite.model.MyAccount;
+import com.ukiuni.slite.util.Async;
 import com.ukiuni.slite.util.JSONDate;
 import com.ukiuni.slite.util.SS;
 
@@ -22,6 +24,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -29,6 +32,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import io.socket.client.Socket;
+import io.socket.emitter.Emitter;
 
 /**
  * Created by tito on 15/10/08.
@@ -73,6 +79,7 @@ public class Slite {
             myAccount.lastLoginedAt = new Date();
             myAccount.host = connectHost;
             this.myAccount = myAccount;
+            this.host = myAccount.host;
             return myAccount;
         } catch (JSONException e) {
             throw new IOException(e);
@@ -81,7 +88,6 @@ public class Slite {
 
     private JSONObject httpJ(String method, String url, Map<String, String> form) throws IOException, JSONException {
         String json = http(method, url, form);
-        Log.d("", "------" + json);
         return new JSONObject(json);
 
     }
@@ -190,6 +196,18 @@ public class Slite {
             }
             group.contents = contents;
         }
+        if (contentJSON.has("Channels")) {
+            List<Channel> channels = new ArrayList<Channel>();
+            JSONArray channelsArray = contentJSON.getJSONArray("Channels");
+            for (int i = 0; i < channelsArray.length(); i++) {
+                Channel channel = new Channel();
+                channel.name = channelsArray.getJSONObject(i).getString("name");
+                channel.accessKey = channelsArray.getJSONObject(i).getString("accessKey");
+                channels.add(channel);
+
+            }
+            group.channels = channels;
+        }
         return group;
     }
 
@@ -256,6 +274,7 @@ public class Slite {
 
     public void setMyAccount(MyAccount myAccount) {
         this.myAccount = myAccount;
+        setHost(myAccount.host);
     }
 
     public void deleteContent(Content content) throws IOException {
@@ -264,6 +283,10 @@ public class Slite {
         } catch (JSONException e) {
             throw new IOException(e);
         }
+    }
+
+    public void sendMessage(String channelAccessKey, String messageBody) throws IOException {
+        http(POST, host + "/api/groups/global/channels/" + channelAccessKey + "/messages", SS.map("sessionKey", this.myAccount.sessionKey).p("body", messageBody));
     }
 
     public static interface Progress {
@@ -368,5 +391,135 @@ public class Slite {
         } catch (JSONException e) {
             throw new IOException(e);
         }
+    }
+
+    public void listenChannel(final String channelAccessKey, final MessageHandle messageHandle) throws IOException {
+        try {
+            final Socket socket = io.socket.client.IO.socket(myAccount.host);
+            messageHandle.setSocket(socket, channelAccessKey);
+
+            socket.once(Socket.EVENT_CONNECT, new Emitter.Listener() {
+                @Override
+                public void call(Object... args) {
+                    socket.emit("authorize", myAccount.sessionKey);
+                    socket.emit("listenChannel", channelAccessKey);
+                    socket.emit("requestMessage", SS.map("channelAccessKey", channelAccessKey).toJSON());
+                }
+            }).on(channelAccessKey, new Emitter.Listener() {
+                @Override
+                public void call(Object... args) {
+                    try {
+                        final Event event = new Event(new JSONObject((String) args[0]));
+                        Async.pushToOriginalThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if ("message".equals(event.type)) {
+                                    messageHandle.onMessage(event.message);
+                                } else if ("historicalMessage".equals(event.type)) {
+                                    messageHandle.onHistoricalMessage(event.message);
+                                } else if ("join".equals(event.type)) {
+                                    messageHandle.onJoin(event.account);
+                                    if (event.account.id != myAccount.id) {
+                                        socket.emit("hello", SS.map("channelAccessKey", channelAccessKey).toJSON());
+                                    }
+                                } else if ("hello".equals(event.type)) {
+                                    messageHandle.onJoin(event.account);
+                                } else if ("reave".equals(event.type)) {
+                                    messageHandle.onReave(event.account);
+                                }
+                            }
+                        });
+                    } catch (JSONException e) {
+                        messageHandle.onError(e);
+                        return;
+                    }
+                }
+            }).on("exception", new Emitter.Listener() {
+                @Override
+                public void call(Object... args) {
+                    Async.makeToast(null != args[0] ? args[0].toString() : SliteApplication.getInstance().getString(R.string.fail_to_access_to_server));
+                }
+            }).on(Socket.EVENT_DISCONNECT, new Emitter.Listener() {
+                @Override
+                public void call(Object... args) {
+                    messageHandle.onDisconnect();
+                }
+            });
+            socket.connect();
+        } catch (URISyntaxException e) {
+            throw new IOException(e);
+        }
+    }
+
+    public class Event {
+        public Event(JSONObject jObj) {
+            try {
+                this.type = jObj.getString("type");
+                if (jObj.has("message")) {
+                    JSONObject messageJObj = jObj.getJSONObject("message");
+                    this.message = new Message();
+                    this.message.body = messageJObj.getString("body");
+                    this.message.id = messageJObj.getLong("id");
+                    this.message.createdAt = JSONDate.parse(messageJObj.getString("createdAt"));
+                    this.message.updatedAt = JSONDate.parse(messageJObj.getString("updatedAt"));
+                    this.message.localOwner = myAccount;
+                    JSONObject ownerJObj = messageJObj.getJSONObject("owner");
+                    this.message.owner = new Account();
+                    this.message.owner.id = ownerJObj.getLong("id");
+                    this.message.owner.name = ownerJObj.getString("name");
+                    this.message.owner.iconUrl = ownerJObj.getString("iconUrl");
+                }
+                if (jObj.has("account")) {
+                    JSONObject ownerJObj = jObj.getJSONObject("account");
+                    this.account = new Account();
+                    this.account.id = ownerJObj.getLong("id");
+                    this.account.name = ownerJObj.getString("name");
+                    this.account.iconUrl = ownerJObj.getString("iconUrl");
+                }
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public String type;
+        public Message message;
+        public Account account;
+        public Date createdAt;
+        public Date updatedAt;
+    }
+
+    public static abstract class MessageHandle {
+        private Socket socket;
+        private String accessKey;
+
+        private void setSocket(Socket socket, String accessKey) {
+            this.socket = socket;
+            this.accessKey = accessKey;
+        }
+
+        public abstract void onJoin(Account account);
+
+        public abstract void onMessage(Message message);
+
+        public abstract void onHistoricalMessage(Message message);
+
+        public abstract void onReave(Account account);
+
+        public abstract void onError(Exception e);
+
+        public abstract void onDisconnect();
+
+        public final void requestOlder(long lastId) {
+            socket.emit("requestMessage", SS.map("channelAccessKey", accessKey).p("idBefore", "" + lastId).toJSON());
+        }
+
+        public final void disconnect() {
+            if (null != socket) {
+                this.socket.off();
+                socket.disconnect();
+                socket.close();
+            }
+        }
+
     }
 }

@@ -44,4 +44,25 @@
             />
     </LinearLayout>
 
+    <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="0px"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <ScrollView
+            android:id="@+id/channelsScroll"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <ListView
+                android:id="@+id/channelListView"
+                android:layout_width="fill_parent"
+                android:layout_height="0px"
+                android:layout_weight="1"></ListView>
+
+        </ScrollView>
+    </LinearLayout>
+
 </LinearLayout>

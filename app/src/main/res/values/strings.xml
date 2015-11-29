@@ -11,6 +11,7 @@
     <string name="appends_to_content">appends to content</string>
     <string name="fail_to_get_content">Fail to get content</string>
     <string name="fail_to_put_content">Fail to put content</string>
+    <string name="fail_to_put_message">Fail to put message</string>
     <string name="fail_to_delete_content">Fail to delete content</string>
     <string name="fail_to_load_image">Fail to load image</string>
 
@@ -35,5 +36,8 @@
 
     <string name="fail_to_access_to_server">Fail to access to server</string>
     <string name="no_content">No content</string>
+    <string name="no_channel">No channel</string>
+    <string name="change_account">Change account</string>
+    <string name="send">send</string>
 
 </resources>
