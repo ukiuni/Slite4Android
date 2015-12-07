@@ -289,6 +289,9 @@ public class Slite {
         http(POST, host + "/api/groups/global/channels/" + channelAccessKey + "/messages", SS.map("sessionKey", this.myAccount.sessionKey).p("body", messageBody));
     }
 
+    public void registDevice(String token) {
+    }
+
     public static interface Progress {
         public void sended(int current);
     }

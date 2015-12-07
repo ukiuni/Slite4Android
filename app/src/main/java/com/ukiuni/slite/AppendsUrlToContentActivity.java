@@ -145,10 +145,11 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
             public void onClick(View v) {
                 finish();
                 Async.start(new Async.Task() {
+                    Content targetContent;
+
                     @Override
                     public void work(Async.Handle handle) throws Throwable {
                         Slite slite = new Slite();
-                        Content targetContent = (Content) contentSpinner.getSelectedItem();
                         slite.setHost(targetContent.loadAccount.host);
                         slite.setMyAccount(targetContent.loadAccount);
                         if (null != bitmapForView) {
@@ -175,7 +176,7 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
                                     @Override
                                     public void sended(int current) {
                                         if (status != null) {
-                                            status.increaseProgress((int) (current / fileSize));
+                                            status.increaseProgress((int) ((double) (current * 100) / (double) fileSize));
                                         }
                                     }
                                 });
@@ -193,8 +194,9 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
 
                     @Override
                     public void preExecute() {
+                        targetContent = (Content) contentSpinner.getSelectedItem();
                         if (null != cachedFile) {
-                            status = Async.showNotifiction(R.string.uploading, cachedFile.getName());
+                            status = Async.showNotifiction(getString(R.string.uploading), cachedFile.getName(), ContentViewActivity.createPendingIntent(getApplicationContext(), targetContent));
                         }
                     }
 

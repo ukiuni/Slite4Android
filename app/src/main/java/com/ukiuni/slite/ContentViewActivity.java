@@ -1,5 +1,6 @@
 package com.ukiuni.slite;
 
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -35,6 +36,14 @@ public class ContentViewActivity extends SliteBaseActivity {
         intent.putExtra(INTENT_KEY_CONTENT_EDITABLE, content.editable);
         intent.putExtra(INTENT_KEY_CONTENT_ID, content.id);
         context.startActivity(intent);
+    }
+
+    public static PendingIntent createPendingIntent(Context context, Content content) {
+        Intent intent = new Intent(context, ContentViewActivity.class);
+        intent.putExtra(INTENT_KEY_CONTENT_ACCESS_KEY, content.accessKey);
+        intent.putExtra(INTENT_KEY_CONTENT_EDITABLE, content.editable);
+        intent.putExtra(INTENT_KEY_CONTENT_ID, content.id);
+        return PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_ONE_SHOT);
     }
 
     @Override
