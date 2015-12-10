@@ -20,7 +20,6 @@ import com.ukiuni.slite.R;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -57,7 +56,7 @@ public class Async {
         builder.setContentTitle(context.getString(title))
                 .setContentText(message)
                 .setSmallIcon(R.drawable.notify_icon);
-        final int id = new Random().nextInt();
+        final int id = 123123123;//(open only one notification)new Random().nextInt();
         return new Async.Status() {
             public void increaseProgress(int percent) {
                 builder.setProgress(100, percent, false);

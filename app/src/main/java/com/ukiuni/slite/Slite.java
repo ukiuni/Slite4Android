@@ -165,12 +165,15 @@ public class Slite {
         content.accessKey = contentJSON.getString("accessKey");
         content.createdAt = JSONDate.parse(contentJSON.getString("createdAt"));
         content.updatedAt = JSONDate.parse(contentJSON.getString("updatedAt"));
-
+        if (contentJSON.has("type")) {
+            content.type = contentJSON.getString("type");
+        }
         JSONObject contentBody = contentJSON.getJSONArray("ContentBodies").getJSONObject(0);
         content.imageUrl = contentBody.getString("topImageUrl");
         if (contentBody.has("article")) {
             content.article = contentBody.getString("article");
         }
+
         content.title = contentBody.getString("title");
 
         JSONObject account = contentJSON.getJSONObject("owner");
@@ -309,6 +312,8 @@ public class Slite {
 
         connection.setUseCaches(false);
         connection.setRequestMethod(POST);
+        connection.setReadTimeout(30000);
+        connection.setConnectTimeout(10000);
         connection.setDoOutput(true);
         connection.setDoInput(true);
         connection.setRequestProperty("Connection", "Keep-Alive");
