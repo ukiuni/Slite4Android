@@ -52,6 +52,9 @@ public class SliteBaseActivity extends AppCompatActivity {
         if (id == R.id.menu_change_account) {
             SigninActivity.start(this);
             return true;
+        } else if (id == R.id.menu_home) {
+            TopActivity.start(this);
+            return true;
         } else if (id == R.id.menu_group) {
             GroupsActivity.start(this);
             return true;

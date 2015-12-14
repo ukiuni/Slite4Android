@@ -1,22 +1,10 @@
 package com.ukiuni.slite;
 
-import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Matrix;
-import android.graphics.Rect;
-import android.graphics.RectF;
-import android.media.ExifInterface;
-import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -39,18 +27,15 @@ import com.ukiuni.slite.model.Calendar;
 import com.ukiuni.slite.model.Content;
 import com.ukiuni.slite.model.Content$Table;
 import com.ukiuni.slite.util.Async;
-import com.ukiuni.slite.util.IO;
+import com.ukiuni.slite.util.ForUploadFiles;
+import com.ukiuni.slite.util.ImageUtil;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.UUID;
 
 public class AppendsUrlToContentActivity extends AppCompatActivity {
 
@@ -62,7 +47,7 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
         final ImageView imageView = (ImageView) findViewById(R.id.image);
         final Spinner contentSpinner = (Spinner) findViewById(R.id.contentSpinner);
 
-        final List<UploadSet> uploadSets = new ArrayList<>();
+        final List<ForUploadFiles> uploadSets = new ArrayList<>();
 
         Intent intent = getIntent();
         if (intent.getAction().equals(Intent.ACTION_SEND)) {
@@ -77,10 +62,10 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
                 text += "\n";
                 editText.setText(text);
                 editText.setVisibility(View.VISIBLE);
-                uploadSets.add(new UploadSet());
+                uploadSets.add(ForUploadFiles.createEmpty());
             } else if (imageUri != null) {
                 try {
-                    UploadSet uploadSet = new UploadSet().readAndCreate(imageUri);
+                    ForUploadFiles uploadSet = ForUploadFiles.readAndCreate(imageUri);
                     uploadSets.add(uploadSet);
                     imageView.setImageBitmap(uploadSet.getBitmapForView());
                     imageView.setVisibility(View.VISIBLE);
@@ -93,7 +78,7 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
             List<Uri> imageUris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
             for (Uri imageUri : imageUris) {
                 try {
-                    UploadSet uploadSet = new UploadSet().readAndCreate(imageUri);
+                    ForUploadFiles uploadSet = ForUploadFiles.readAndCreate(imageUri);
                     uploadSets.add(uploadSet);
                     imageView.setImageBitmap(uploadSet.getBitmapForView());
                     imageView.setVisibility(View.VISIBLE);
@@ -158,7 +143,7 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
         public Content send(Slite slite) throws IOException;
     }
 
-    protected void uploadFileAsync(final Content targetContent, final List<UploadSet> uploadSets, final EditText editText) {
+    protected void uploadFileAsync(final Content targetContent, final List<ForUploadFiles> uploadSets, final EditText editText) {
         Async.start(new Async.Task() {
             @Override
             public void work(Async.Handle handle) throws Throwable {
@@ -184,25 +169,7 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
 
                         @Override
                         public void append(File file, String tumbnailUrl, String fileUrl) {
-                            Date date;
-                            if (file.getName().toUpperCase().endsWith(".JPG") || file.getName().toUpperCase().endsWith(".JPEG")) {
-                                try {
-                                    ExifInterface exif = new ExifInterface(file.getAbsolutePath());
-                                    date = new SimpleDateFormat("yyyy:MM:dd HH:mm:ss").parse(exif.getAttribute(ExifInterface.TAG_DATETIME));
-                                } catch (IOException | ParseException e) {
-                                    date = new Date();
-                                }
-                            } else if (file.getName().toUpperCase().endsWith(".MP4")) {
-                                try {
-                                    MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-                                    retriever.setDataSource(file.getAbsolutePath());
-                                    date = new SimpleDateFormat("yyyyMMdd'T'HHmmss'.000Z'").parse(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE));
-                                } catch (ParseException e) {
-                                    date = new Date();
-                                }
-                            } else {
-                                date = new Date();
-                            }
+                            Date date = ImageUtil.picupDate(file);
                             calendar.append(date, tumbnailUrl, fileUrl);
                         }
 
@@ -230,29 +197,15 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
                 }
                 int index = 1;
 
-                for (UploadSet uploadSet : uploadSets) {
+                for (ForUploadFiles uploadSet : uploadSets) {
                     Throwable throwedException = null;
                     for (int retryCount = 0; retryCount < 3; retryCount++) {
                         try {
                             Bitmap bitmapForView = uploadSet.getBitmapForView();
                             if (null != bitmapForView) {
                                 final Async.Status status = Async.showNotifiction(R.string.uploading, uploadSet.cachedFile.getName() + "(" + (index++) + "/" + uploadSets.size() + ")");
-                                int w = bitmapForView.getWidth();
-                                int h = bitmapForView.getHeight();
-                                float scale = Math.max((float) 500 / w, (float) 500 / h);
-                                int size = Math.min(w, h);
-                                Matrix matrix = new Matrix();
-                                matrix.postScale(scale, scale);
-                                Bitmap thumbnail = Bitmap.createBitmap(bitmapForView, (w - size) / 2, (h - size) / 2, size, size, matrix, true);
-                                if (uploadSet.isMovie) {
-                                    Canvas canvas = new Canvas(thumbnail);
-                                    int circleX = thumbnail.getWidth() / 10 * 9;
-                                    int circleY = thumbnail.getHeight() / 10 * 9;
-                                    Bitmap playBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.play);
-                                    canvas.drawBitmap(playBitmap, new Rect(0, 0, playBitmap.getWidth(), playBitmap.getHeight()), new RectF(circleX, circleY, thumbnail.getWidth(), thumbnail.getHeight()), null);
-                                    bitmapForView.recycle();
-                                    playBitmap.recycle();
-                                }
+                                Bitmap thumbnail = ImageUtil.createThumbnail(bitmapForView, uploadSet.isMovie());
+                                bitmapForView.recycle();
                                 String tumbnailUrl = slite.uploadImage(targetContent.accessKey, thumbnail);
 
                                 try (FileInputStream fileIn = new FileInputStream(uploadSet.cachedFile)) {
@@ -295,6 +248,7 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
             @Override
             public void onError(Throwable e) {
                 Async.makeToast(R.string.fail_to_put_content);
+                Log.e("", "fail to put content", e);
                 Intent intent = new Intent(AppendsUrlToContentActivity.this, AppendsUrlToContentActivity.class);
                 intent.setAction(Intent.ACTION_SEND);
                 intent.putExtra(Intent.EXTRA_TEXT, editText.getText().toString());
@@ -370,62 +324,5 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
         }
     }
 
-    private class UploadSet {
-        private ImageView imageView;
-        private File cachedFile;
-        private File bitmapCacheFile;
-        private boolean isMovie = false;
 
-        public UploadSet() {
-        }
-
-        public Bitmap getBitmapForView() {
-            if (null == bitmapCacheFile) {
-                return null;
-            }
-            return BitmapFactory.decodeFile(bitmapCacheFile.getAbsolutePath());
-        }
-
-        public boolean isMovie() {
-            return isMovie;
-        }
-
-        public File getCachedFile() {
-            return cachedFile;
-        }
-
-        public UploadSet readAndCreate(Uri imageUri) throws PermissionException, IOException {
-            try {
-                Bitmap bitmapForView;
-                int permissionCheck = ContextCompat.checkSelfPermission(AppendsUrlToContentActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE);
-                if (PackageManager.PERMISSION_GRANTED != permissionCheck) {
-                    ActivityCompat.requestPermissions(AppendsUrlToContentActivity.this,
-                            new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                            0);
-                    throw new PermissionException();
-                }
-                File file = new File(IO.getPath(getApplication(), imageUri));
-                cachedFile = new File(getCacheDir(), file.getName());
-                IO.copy(file, cachedFile);
-                bitmapForView = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
-                if (null == bitmapForView) {
-                    MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-                    retriever.setDataSource(AppendsUrlToContentActivity.this, imageUri);
-                    bitmapForView = retriever.getFrameAtTime(0);
-                    isMovie = true;
-                }
-                bitmapCacheFile = new File(getCacheDir(), UUID.randomUUID().toString() + ".png");
-                try (FileOutputStream fout = new FileOutputStream(bitmapCacheFile)) {
-                    bitmapForView.compress(Bitmap.CompressFormat.PNG, 100, fout);
-                } catch (Exception e) {
-                    bitmapCacheFile = null;
-                    throw e;
-                }
-            } catch (Exception e) {
-                Async.makeToast(R.string.fail_to_load_image);
-                throw new IOException(e);
-            }
-            return this;
-        }
-    }
 }

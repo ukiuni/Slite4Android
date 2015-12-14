@@ -15,11 +15,24 @@
         android:layout_height="0px"
         android:layout_weight="1"></ListView>
 
-    <Button
-        android:id="@+id/createContentButton"
+    <LinearLayout
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:text="@string/create_content"
-        />
+        android:orientation="horizontal">
 
+        <Button
+            android:id="@+id/createContentButton"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/create_content"
+            />
+
+        <Button
+            android:id="@+id/createCalendarButton"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/create_calendar"/>
+    </LinearLayout>
 </LinearLayout>

@@ -39,5 +39,9 @@
     <string name="no_channel">No channel</string>
     <string name="change_account">Change account</string>
     <string name="send">send</string>
+    <string name="create_calendar">Create calendar</string>
+    <string name="title">title</string>
+    <string name="fail_to_parse_calendar">Fail to parse calendar</string>
+    <string name="home">home</string>
 
 </resources>

@@ -2,6 +2,7 @@ package com.ukiuni.slite;
 
 import android.graphics.Bitmap;
 import android.support.annotation.NonNull;
+import android.util.Log;
 
 import com.ukiuni.slite.model.Account;
 import com.ukiuni.slite.model.Channel;
@@ -194,6 +195,7 @@ public class Slite {
         if (contentJSON.has("Contents")) {
             List<Content> contents = new ArrayList<Content>();
             JSONArray contentsArray = contentJSON.getJSONArray("Contents");
+            Log.d("", "-------contentsArray--- " + contentsArray.length());
             for (int i = 0; i < contentsArray.length(); i++) {
                 contents.add(convertContent(contentsArray.getJSONObject(i)));
             }
@@ -268,7 +270,22 @@ public class Slite {
 
     public Content createContent(String title, String article) throws IOException {
         try {
+            if (title == null) {
+                title = "";
+            }
             JSONObject contentJson = httpJ(POST, host + "/api/content/", SS.map("sessionKey", this.myAccount.sessionKey).p("title", title).p("article", article));
+            return convertContent(contentJson);
+        } catch (JSONException e) {
+            throw new IOException(e);
+        }
+    }
+
+    public Content createCalendar(String title, String article) throws IOException {
+        try {
+            if (title == null) {
+                title = "";
+            }
+            JSONObject contentJson = httpJ(POST, host + "/api/content/", SS.map("sessionKey", this.myAccount.sessionKey).p("title", title).p("article", article).p("type", Content.TYPE_CALENDAR));
             return convertContent(contentJson);
         } catch (JSONException e) {
             throw new IOException(e);

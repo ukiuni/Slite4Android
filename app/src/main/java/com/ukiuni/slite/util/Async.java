@@ -12,11 +12,13 @@ import android.renderscript.Allocation;
 import android.renderscript.RenderScript;
 import android.renderscript.ScriptIntrinsicBlur;
 import android.support.v4.app.NotificationCompat;
+import android.util.Log;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import com.ukiuni.slite.R;
+import com.ukiuni.slite.SliteApplication;
 
 import java.io.IOException;
 import java.net.URL;
@@ -31,7 +33,6 @@ public class Async {
     private static Context context;
     private static Handler handler;
     private static final int TIME_BEFORE_OPEN_DIALOG = 500;
-    private static Activity currentActivity;
 
     public static void init(Context context) {
         Async.context = context;
@@ -82,8 +83,9 @@ public class Async {
     public static Handle start(final Task task, final int... errorStringId) {
         final Handle handle = new Handle();
         ProgressDialog tmpProgress = null;
-        if (null != Async.currentActivity) {
-            tmpProgress = new ProgressDialog(Async.currentActivity);
+        final Activity currentActivity = SliteApplication.getInstance().getCurrentActivity();
+        if (null != currentActivity) {
+            tmpProgress = new ProgressDialog(currentActivity);
         }
         final ProgressDialog progressDialog = tmpProgress;
         final boolean completed = false;
@@ -154,6 +156,7 @@ public class Async {
                                 return;
                             }
                             if (null != progressDialog) {
+                                progressDialog.show();
                                 progressDialog.setContentView(R.layout.progressdialog);
                                 progressDialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
                                     @Override
@@ -163,6 +166,7 @@ public class Async {
                                 });
                                 progressDialog.getWindow().setLayout(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
                                 progressDialog.setProgressDrawable(context.getDrawable(R.drawable.tranzient));
+
                             }
                         }
                     }
@@ -182,7 +186,7 @@ public class Async {
             @Override
             public void run() {
                 try {
-                    URL newurl = new URL(imageUrl);
+                    URL newurl = new URL(imageUrl + "?sessionKey=" + SliteApplication.currentAccount().sessionKey);
                     final Bitmap iconBitmap = BitmapFactory.decodeStream(newurl.openConnection().getInputStream());
                     if (withBlur.length > 0 && withBlur[0]) {
                         RenderScript renderScript = RenderScript.create(context);
@@ -200,6 +204,7 @@ public class Async {
                         }
                     });
                 } catch (IOException ignored) {
+                    Log.e("", "---------- imageAttachFailed", ignored);
                 }
             }
         });
@@ -215,14 +220,6 @@ public class Async {
         }
         toast = Toast.makeText(context, message, Toast.LENGTH_LONG);
         toast.show();
-    }
-
-    public static void setCurrentActivity(Activity currentActivity) {
-        Async.currentActivity = currentActivity;
-    }
-
-    public static void removeCurrentActivity() {
-        Async.currentActivity = null;
     }
 
     public static class Task {

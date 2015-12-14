@@ -1,5 +1,7 @@
 package com.ukiuni.slite.model;
 
+import android.util.Log;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -20,6 +22,7 @@ public class Calendar {
     public final Map<String, Day> calendarMap = new TreeMap<>();
 
     public void append(Date date, String tumbnail, String file) {
+        Log.d("", "-------bef--- " + calendarMap.size());
         String dateKey = new SimpleDateFormat("yyyy/M/d").format(date);
         Day day = calendarMap.get(dateKey);
         if (null == day) {
@@ -28,7 +31,12 @@ public class Calendar {
             calendarMap.put(dateKey, day);
             day.images = new ArrayList<>();
         }
-        day.images.add(new TumbnailAndFile(tumbnail, file));
+        day.images.add(new ThumbnailAndFile(tumbnail, file));
+        Log.d("", "-------aft--- " + calendarMap.size());
+    }
+
+    public Day pickDay(int year, int month, int dateOfMonth) {
+        return calendarMap.get(year + "/" + (month + 1) + "/" + dateOfMonth);
     }
 
     public static Calendar parse(String article) throws IOException {
@@ -48,7 +56,7 @@ public class Calendar {
                     JSONArray imagesJ = dayJ.getJSONArray("images");
                     for (int i = 0; i < imagesJ.length(); i++) {
                         JSONObject imageJ = imagesJ.getJSONObject(i);
-                        TumbnailAndFile tumbnailAndFile = new TumbnailAndFile(imageJ.getString("thumbnail"), imageJ.getString("file"));
+                        ThumbnailAndFile tumbnailAndFile = new ThumbnailAndFile(imageJ.getString("thumbnail"), imageJ.getString("file"));
                         day.images.add(tumbnailAndFile);
                     }
                 }
@@ -68,7 +76,7 @@ public class Calendar {
                 JSONObject dayJ = new JSONObject();
                 dayJ.put("description", day.description);
                 JSONArray imagesJ = new JSONArray();
-                for (TumbnailAndFile tumbnailAndFile : day.images) {
+                for (ThumbnailAndFile tumbnailAndFile : day.images) {
                     JSONObject imageJ = new JSONObject();
                     imageJ.put("thumbnail", tumbnailAndFile.tumbnail);
                     imageJ.put("file", tumbnailAndFile.file);
@@ -86,11 +94,11 @@ public class Calendar {
     public static class Day {
         public String dateKey;
         public String description;
-        public List<TumbnailAndFile> images = new ArrayList<>();
+        public List<ThumbnailAndFile> images = new ArrayList<>();
     }
 
-    public static class TumbnailAndFile {
-        public TumbnailAndFile(String tumbnail, String file) {
+    public static class ThumbnailAndFile {
+        public ThumbnailAndFile(String tumbnail, String file) {
             this.tumbnail = tumbnail;
             this.file = file;
         }

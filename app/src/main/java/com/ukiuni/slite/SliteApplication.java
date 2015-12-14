@@ -19,7 +19,7 @@ public class SliteApplication extends Application {
     public static SharedPreferences pref;
     public static final String PREF_KEY_MYACCOUNT_ID = "PREF_KEY_MYACCOUNT_ID";
 
-    public static SliteApplication instance;
+    private static SliteApplication instance;
     private Activity currentActivity;
 
     public static SliteApplication getInstance() {
@@ -34,7 +34,7 @@ public class SliteApplication extends Application {
     public void onCreate() {
         super.onCreate();
         FlowManager.init(this);
-       // FlowLog.setMinimumLoggingLevel(FlowLog.Level.V);
+        // FlowLog.setMinimumLoggingLevel(FlowLog.Level.V);
         this.pref = getSharedPreferences(SliteApplication.class.getName(), MODE_PRIVATE);
         if (this.pref.contains(PREF_KEY_MYACCOUNT_ID)) {
             MyAccount myAccount = new Select().from(MyAccount.class).byIds(this.pref.getLong(PREF_KEY_MYACCOUNT_ID, 0)).querySingle();
@@ -46,12 +46,14 @@ public class SliteApplication extends Application {
 
     public void setCurrentActivity(Activity currentActivity) {
         this.currentActivity = currentActivity;
-        Async.setCurrentActivity(currentActivity);
+    }
+
+    public Activity getCurrentActivity() {
+        return this.currentActivity;
     }
 
     public void removeCurrentActivity() {
         this.currentActivity = null;
-        Async.removeCurrentActivity();
     }
 
     public static MyAccount currentAccount() {

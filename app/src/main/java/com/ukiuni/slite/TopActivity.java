@@ -3,6 +3,7 @@ package com.ukiuni.slite;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
@@ -51,7 +52,12 @@ public class TopActivity extends SliteBaseActivity {
                 contentListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                     @Override
                     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                        ContentViewActivity.start(TopActivity.this, contents.get(position));
+                        Content content = contents.get(position);
+                        if (Content.TYPE_CALENDAR.equals(content.type)) {
+                            CalendarEditActivity.start(TopActivity.this, content, false);
+                        } else {
+                            ContentViewActivity.start(TopActivity.this, content);
+                        }
                     }
                 });
             }
@@ -73,6 +79,13 @@ public class TopActivity extends SliteBaseActivity {
                 ContentEditActivity.start(TopActivity.this);
             }
         });
+        Button createCalendarButton = (Button) findViewById(R.id.createCalendarButton);
+        createCalendarButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                CalendarEditActivity.start(TopActivity.this, true);
+            }
+        });
     }
 
     public static void start(Context context) {
@@ -85,4 +98,12 @@ public class TopActivity extends SliteBaseActivity {
         context.startActivity(intent);
     }
 
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.menu_home) {
+            return false;
+        }
+        return super.onOptionsItemSelected(item);
+    }
 }
