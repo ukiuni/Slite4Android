@@ -23,11 +23,27 @@ import java.util.List;
 public class TopActivity extends SliteBaseActivity {
 
     private static final String INTENT_KEY_MYACCOUNT_ID = "INTENT_KEY_MYACCOUNT_ID";
+    private boolean loading;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.top);
+        Button createContentButton = (Button) findViewById(R.id.createContentButton);
+        createContentButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ContentEditActivity.start(TopActivity.this);
+            }
+        });
+        Button createCalendarButton = (Button) findViewById(R.id.createCalendarButton);
+        createCalendarButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                CalendarEditActivity.start(TopActivity.this, true);
+            }
+        });
+
     }
 
     @Override
@@ -36,11 +52,15 @@ public class TopActivity extends SliteBaseActivity {
 
         final ListView contentListView = (ListView) findViewById(R.id.contentListView);
         final MyAccount myAccount = new Select().from(MyAccount.class).byIds(getIntent().getLongExtra(INTENT_KEY_MYACCOUNT_ID, 0)).querySingle();
+        if (loading) {
+            return;
+        }
         Async.start(new Async.Task() {
             ContentArrayAdapter adapter;
 
             @Override
             public void work(Async.Handle handle) throws Throwable {
+                loading = true;
                 final List<Content> contents = SliteApplication.getSlite().loadMyContent();
                 for (Content content : contents) {
                     content.owner.save();
@@ -60,6 +80,7 @@ public class TopActivity extends SliteBaseActivity {
                         }
                     }
                 });
+                loading = false;
             }
 
             @Override
@@ -70,20 +91,6 @@ public class TopActivity extends SliteBaseActivity {
             @Override
             public void onComplete() {
 
-            }
-        });
-        Button createContentButton = (Button) findViewById(R.id.createContentButton);
-        createContentButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                ContentEditActivity.start(TopActivity.this);
-            }
-        });
-        Button createCalendarButton = (Button) findViewById(R.id.createCalendarButton);
-        createCalendarButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                CalendarEditActivity.start(TopActivity.this, true);
             }
         });
     }
