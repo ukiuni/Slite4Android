@@ -20,8 +20,10 @@ import android.widget.Toast;
 import com.ukiuni.slite.R;
 import com.ukiuni.slite.SliteApplication;
 
-import java.io.IOException;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.net.URL;
+import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -182,6 +184,12 @@ public class Async {
     private static ExecutorService imageLoadExecutor = Executors.newFixedThreadPool(5);
 
     public static void setImage(final ImageView titleImage, final String imageUrl, final boolean... withBlur) {
+        if (null == imageUrl) {
+            return;
+        }
+        if (findCacheAndAttach(titleImage, imageUrl)) {
+            return;
+        }
         imageLoadExecutor.execute(new Runnable() {
             @Override
             public void run() {
@@ -203,12 +211,60 @@ public class Async {
                             titleImage.setImageBitmap(iconBitmap);
                         }
                     });
-                } catch (IOException ignored) {
+                    saveCache(iconBitmap, imageUrl);
+                } catch (Exception ignored) {
                     Log.e("", "---------- imageAttachFailed", ignored);
                 }
             }
         });
     }
+
+    private static void saveCache(Bitmap iconBitmap, String url) {
+        try (FileOutputStream out = new FileOutputStream(generateCachePath(url))) {
+            iconBitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+            weakHashMap.put(url, iconBitmap);
+        } catch (Exception e) {
+            Log.e("", "Fail to cache", e);
+        }
+    }
+
+    private static WeakHashMap<String, Bitmap> weakHashMap = new WeakHashMap<String, Bitmap>();
+
+    private static boolean findCacheAndAttach(final ImageView titleImage, String imageUrl) {
+        if (weakHashMap.containsKey(imageUrl)) {
+            titleImage.setImageBitmap(weakHashMap.get(imageUrl));
+            return true;
+        }
+        final File cacheFile = findCacheFromCacheDir(imageUrl);
+        if (null != cacheFile) {
+            imageLoadExecutor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    final Bitmap bitmap = BitmapFactory.decodeFile(cacheFile.getAbsolutePath());
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            titleImage.setImageBitmap(bitmap);
+                        }
+                    });
+                }
+            });
+        }
+        return false;
+    }
+
+    private static File findCacheFromCacheDir(String imageUrl) {
+        File file = generateCachePath(imageUrl);
+        if (file.exists()) {
+            return file;
+        }
+        return null;
+    }
+
+    private static File generateCachePath(String imageUrl) {
+        return new File(context.getCacheDir(), IO.toBase64String(imageUrl));
+    }
+
 
     public static void makeToast(int messageId) {
         makeToast(context.getResources().getString(messageId));

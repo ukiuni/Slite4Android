@@ -10,6 +10,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.ukiuni.slite.markdown.MarkdownView;
@@ -18,7 +19,9 @@ import com.ukiuni.slite.model.Message;
 import com.ukiuni.slite.util.Async;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by tito on 15/10/10.
@@ -26,12 +29,14 @@ import java.util.ArrayList;
 public class MessageActivity extends SliteBaseActivity {
 
     private static final String INTENT_KEY_CHANNEL_ACCESS_KEY = "INTENT_KEY_CHANNEL_ACCESS_KEY";
+    private static final int SCROLL_BOTTOM_BUFFER = 200;
     private Slite.MessageHandle messageHandle;
     public ArrayList<Message> messages = new ArrayList<Message>();
     public ArrayList<Account> member = new ArrayList<Account>();
     public ArrayList<Account> joiningAccounts = new ArrayList<Account>();
     private String channelAccessKey;
     private LinearLayout messagesView;
+    private ScrollView messageScroll;
     private SwipeRefreshLayout swipeRefreshLayout;
     private EditText sendText;
     private Button sendButton;
@@ -42,9 +47,18 @@ public class MessageActivity extends SliteBaseActivity {
         setContentView(R.layout.message);
         this.channelAccessKey = getIntent().getStringExtra(INTENT_KEY_CHANNEL_ACCESS_KEY);
         this.messagesView = (LinearLayout) findViewById(R.id.messagesView);
+        this.messageScroll = (ScrollView) findViewById(R.id.messageScroll);
         this.swipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.refresh);
         this.sendText = (EditText) findViewById(R.id.sendText);
         this.sendButton = (Button) findViewById(R.id.sendButton);
+        this.messageScroll.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int left, int top, int right, int bottom, int oldLeft, int oldTop, int oldRight, int oldBottom) {
+                if (messageScroll.getScrollY() + messageScroll.getHeight() + (oldBottom - bottom) > messagesView.getBottom() - SCROLL_BOTTOM_BUFFER) {
+                    scrollMyListViewToBottom();
+                }
+            }
+        });
     }
 
     @Override
@@ -64,21 +78,28 @@ public class MessageActivity extends SliteBaseActivity {
             }
 
             @Override
-            public void onHistoricalMessage(Message message) {
-
-                boolean appended = false;
-                for (int i = 0; i < messages.size(); i++) {
-                    if (messages.get(i).createdAt.after(message.createdAt)) {
-                        messagesView.addView(createMessageView(message), i);
-                        messages.add(i, message);
-                        appended = true;
-                        break;
+            public void onHistoricalMessage(List<Message> newMessages) {
+                boolean first = messages.isEmpty();
+                for (Message message : newMessages) {
+                    boolean appended = false;
+                    for (int i = 0; i < messages.size(); i++) {
+                        if (messages.get(i).createdAt.after(message.createdAt)) {
+                            messagesView.addView(createMessageView(message), i);
+                            messages.add(i, message);
+                            appended = true;
+                            break;
+                        }
+                    }
+                    if (!appended) {
+                        messagesView.addView(createMessageView(message));
+                        messages.add(message);
                     }
                 }
-                if (!appended) {
-                    messages.add(message);
+                if (first) {
+                    scrollMyListViewToBottom();
+                } else {
+                    scrollMyListViewToTop();
                 }
-                scrollMyListViewToTop();
             }
 
             @Override
@@ -96,21 +117,7 @@ public class MessageActivity extends SliteBaseActivity {
 
             }
 
-            private void scrollMyListViewToBottom() {
-                messagesView.post(new Runnable() {
-                    @Override
-                    public void run() {
-                    }
-                });
-            }
 
-            private void scrollMyListViewToTop() {
-                messagesView.post(new Runnable() {
-                    @Override
-                    public void run() {
-                    }
-                });
-            }
         };
         try {
             SliteApplication.getSlite().listenChannel(channelAccessKey, messageHandle);
@@ -156,6 +163,34 @@ public class MessageActivity extends SliteBaseActivity {
                 lastSentedText = messageBody;
             }
         });
+        scrollMyListViewToBottom();
+    }
+
+    private void scrollMyListViewToBottom() {
+        scrollMyListViewTo(messagesView.getBottom());
+    }
+
+    private void scrollMyListViewTo(final int to) {
+        new Thread() {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                messageScroll.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        messageScroll.smoothScrollTo(0, to);
+                    }
+                });
+            }
+        }.start();
+    }
+
+    private void scrollMyListViewToTop() {
+        scrollMyListViewTo(0);
     }
 
     @Override
@@ -176,9 +211,11 @@ public class MessageActivity extends SliteBaseActivity {
     private View createMessageView(Message message) {
         LayoutInflater inflater = LayoutInflater.from(this);
         View convertView = inflater.inflate(R.layout.message_row, null);
-        convertView.setVisibility(View.GONE);
+//        convertView.setVisibility(View.GONE);
         TextView textView = (TextView) convertView.findViewById(R.id.accountNameText);
         textView.setText(message.owner.name);
+        TextView dateTextView = (TextView) convertView.findViewById(R.id.timeText);
+        dateTextView.setText(new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(message.createdAt));
         ImageView imageView = (ImageView) convertView.findViewById(R.id.accountIconImage);
         Async.setImage(imageView, message.owner.iconUrl);
         MarkdownView bodyTextView = (MarkdownView) convertView.findViewById(R.id.bodyText);

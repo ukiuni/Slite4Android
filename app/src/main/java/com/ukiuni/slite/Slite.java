@@ -438,7 +438,7 @@ public class Slite {
                                 if ("message".equals(event.type)) {
                                     messageHandle.onMessage(event.message);
                                 } else if ("historicalMessage".equals(event.type)) {
-                                    messageHandle.onHistoricalMessage(event.message);
+                                    messageHandle.onHistoricalMessage(event.messages);
                                 } else if ("join".equals(event.type)) {
                                     messageHandle.onJoin(event.account);
                                     if (event.account.id != myAccount.id) {
@@ -477,19 +477,20 @@ public class Slite {
         public Event(JSONObject jObj) {
             try {
                 this.type = jObj.getString("type");
+                if ("historicalMessage".equals(this.type)) {
+                    List<Message> messages = new ArrayList<>();
+                    JSONArray jsMessages = jObj.getJSONArray("messages");
+                    for (int i = 0; i < jsMessages.length(); i++) {
+                        JSONObject messageJObj = jsMessages.getJSONObject(i);
+                        Message message = parseMessage(messageJObj);
+                        messages.add(message);
+                    }
+                    this.messages = messages;
+                }
                 if (jObj.has("message")) {
                     JSONObject messageJObj = jObj.getJSONObject("message");
-                    this.message = new Message();
-                    this.message.body = messageJObj.getString("body");
-                    this.message.id = messageJObj.getLong("id");
-                    this.message.createdAt = JSONDate.parse(messageJObj.getString("createdAt"));
-                    this.message.updatedAt = JSONDate.parse(messageJObj.getString("updatedAt"));
-                    this.message.localOwner = myAccount;
-                    JSONObject ownerJObj = messageJObj.getJSONObject("owner");
-                    this.message.owner = new Account();
-                    this.message.owner.id = ownerJObj.getLong("id");
-                    this.message.owner.name = ownerJObj.getString("name");
-                    this.message.owner.iconUrl = ownerJObj.getString("iconUrl");
+                    Message message = parseMessage(messageJObj);
+                    this.message = message;
                 }
                 if (jObj.has("account")) {
                     JSONObject ownerJObj = jObj.getJSONObject("account");
@@ -505,9 +506,26 @@ public class Slite {
 
         public String type;
         public Message message;
+        public List<Message> messages;
         public Account account;
         public Date createdAt;
         public Date updatedAt;
+    }
+
+    @NonNull
+    private Message parseMessage(JSONObject messageJObj) throws JSONException {
+        Message message = new Message();
+        message.body = messageJObj.getString("body");
+        message.id = messageJObj.getLong("id");
+        message.createdAt = JSONDate.parse(messageJObj.getString("createdAt"));
+        message.updatedAt = JSONDate.parse(messageJObj.getString("updatedAt"));
+        message.localOwner = myAccount;
+        JSONObject ownerJObj = messageJObj.getJSONObject("owner");
+        message.owner = new Account();
+        message.owner.id = ownerJObj.getLong("id");
+        message.owner.name = ownerJObj.getString("name");
+        message.owner.iconUrl = ownerJObj.getString("iconUrl");
+        return message;
     }
 
     public static abstract class MessageHandle {
@@ -523,7 +541,7 @@ public class Slite {
 
         public abstract void onMessage(Message message);
 
-        public abstract void onHistoricalMessage(Message message);
+        public abstract void onHistoricalMessage(List<Message> message);
 
         public abstract void onReave(Account account);
 
@@ -532,14 +550,15 @@ public class Slite {
         public abstract void onDisconnect();
 
         public final void requestOlder(long lastId) {
-            socket.emit("requestMessage", SS.map("channelAccessKey", accessKey).p("idBefore", "" + lastId).toJSON());
+            this.socket.emit("requestMessage", SS.map("channelAccessKey", accessKey).p("idBefore", "" + lastId).toJSON());
         }
 
         public final void disconnect() {
             if (null != socket) {
+                this.socket.off(this.accessKey);
                 this.socket.off();
-                socket.disconnect();
-                socket.close();
+                this.socket.disconnect();
+                this.socket.close();
             }
         }
 

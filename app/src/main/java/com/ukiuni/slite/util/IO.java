@@ -6,6 +6,7 @@ import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.MediaStore;
+import android.util.Base64;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -16,6 +17,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 
 /**
  * Created by tito on 2015/11/14.
@@ -93,4 +95,32 @@ public class IO {
             out.write(buffer, 0, readed);
         }
     }
+
+    public static final String ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+    public static final int BASE = ALPHABET.length();
+
+    public static String toBase64String(String src) {
+        if (null == src) {
+            return null;
+        }
+        try {
+            return Base64.encodeToString(src.getBytes("UTF-8"), Base64.DEFAULT);
+        } catch (UnsupportedEncodingException ignored) {
+            throw new RuntimeException(ignored);
+        }
+    }
+
+    public static String fromBase64String(String base64) {
+        if (null == base64) {
+            return null;
+        }
+        try {
+            return new String(Base64.decode(base64, Base64.DEFAULT), "UTF-8");
+        } catch (UnsupportedEncodingException ignored) {
+            throw new RuntimeException(ignored);
+        }
+
+    }
+
 }
