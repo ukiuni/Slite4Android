@@ -13,10 +13,14 @@ import android.util.Log;
 
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 /**
  * Created by tito on 15/09/26.
  */
 public class GcmIntentService extends IntentService {
+    private static final int NOTIFICATION_ID = 100;
 
     static final private String TAG = GcmIntentService.class.getSimpleName();
 
@@ -47,8 +51,9 @@ public class GcmIntentService extends IntentService {
             } else if (GoogleCloudMessaging.
                     MESSAGE_TYPE_MESSAGE.equals(messageType)) {
                 // Post notification of received message.
-
-                sendNotification("Received: " + extras.get("type"));
+                if ("message".equals(extras.getString("type"))) {
+                    sendMessageNotification(extras.getString("message"));
+                }
                 Log.i(TAG, "Received: --- " + extras.toString());
             }
         }
@@ -56,14 +61,39 @@ public class GcmIntentService extends IntentService {
         GcmBroadcastReceiver.completeWakefulIntent(intent);
     }
 
-    // Put the message into a notification and post it.
-    // This is just one simple example of what you might choose to do with
-    // a GCM message.
     private void sendNotification(String msg) {
-        int NOTIFICATION_ID = 1;
+        NotificationCompat.Builder builder =
+                new NotificationCompat.Builder(this)
+                        .setSmallIcon(R.drawable.notify_icon)
+                        .setContentTitle(getString(R.string.message_has_come))
+                        .setStyle(new NotificationCompat.BigTextStyle()
+                                .bigText(msg))
+                        .setContentText(msg);
+
+        NotificationManager notificationManager = (NotificationManager)
+                this.getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.notify(1, builder.build());
+    }
+
+    private void sendMessageNotification(String messageJson) {
+
+        String messageBody = "";
+        long targetAccountId = 0;
+        String fromAccountName = "";
+        String channelName = "";
+        String channelAccessKey = "";
+        try {
+            JSONObject messageJSObj = new JSONObject(messageJson);
+            messageBody = messageJSObj.getString("body");
+            targetAccountId = messageJSObj.getLong("toAccountId");
+            fromAccountName = messageJSObj.getJSONObject("fromAccount").getString("name");
+            channelName = messageJSObj.getJSONObject("channel").getString("name");
+            channelAccessKey = messageJSObj.getJSONObject("channel").getString("accessKey");
+        } catch (JSONException e) {
+            Log.e("fail", "---------fail to parse notify message", e);
+        }
         Activity activity = SliteApplication.getInstance().getCurrentActivity();
-        String kumaChannelAccessKey = "v2g19-RWViCOcKJJ-95IxO5_8p_htBfWrZNrt_uWXmZrKgHstxL-FzUg21mpDfyP";
-        if (null != activity && activity instanceof MessageActivity && kumaChannelAccessKey.equals(((MessageActivity) activity).getChannelAccessKey())) {
+        if (null != activity && activity instanceof MessageActivity && channelAccessKey.equals(((MessageActivity) activity).getChannelAccessKey())) {
             return;
         }
         Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
@@ -72,16 +102,18 @@ public class GcmIntentService extends IntentService {
         vibrator.vibrate(pattern, -1);
         NotificationManager notificationManager = (NotificationManager)
                 this.getSystemService(Context.NOTIFICATION_SERVICE);
-        MessageActivity.createPendingActivity(getApplicationContext(), kumaChannelAccessKey);//TODO
+        MessageActivity.createPendingActivity(getApplicationContext(), targetAccountId, channelAccessKey);
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), 0);
-
+        String title = messageBody;
+        String message = fromAccountName + "@" + channelName;
         NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(this)
-                        .setSmallIcon(android.R.drawable.sym_def_app_icon)//TODO
-                        .setContentTitle(getString(R.string.message_has_come))
+                        .setSmallIcon(R.drawable.notify_icon)
+                        .setColor(0x66AAFF)
+                        .setContentTitle(title)
                         .setStyle(new NotificationCompat.BigTextStyle()
-                                .bigText(msg))
-                        .setContentText(msg);
+                                .bigText(message))
+                        .setContentText(message);
 
         builder.setContentIntent(contentIntent);
         notificationManager.notify(NOTIFICATION_ID, builder.build());
