@@ -66,7 +66,7 @@ public class ContentEditActivity extends SliteBaseActivity {
                     public void work(Async.Handle handle) throws Throwable {
                         if (null != content.accessKey) {
                             Content updatedContent = SliteApplication.getInstance().getSlite().updateContent(content);
-                            content.save();
+                            updatedContent.save();
                         } else {
                             createdContent = SliteApplication.getInstance().getSlite().createContent(content.title, content.article);
                             createdContent.save();

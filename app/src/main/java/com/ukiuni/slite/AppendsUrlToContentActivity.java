@@ -1,21 +1,10 @@
 package com.ukiuni.slite;
 
-import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Matrix;
-import android.graphics.Rect;
-import android.graphics.RectF;
-import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -33,31 +22,37 @@ import android.widget.TextView;
 
 import com.raizlabs.android.dbflow.sql.language.OrderBy;
 import com.raizlabs.android.dbflow.sql.language.Select;
+import com.ukiuni.slite.exception.PermissionException;
+import com.ukiuni.slite.model.Calendar;
 import com.ukiuni.slite.model.Content;
 import com.ukiuni.slite.model.Content$Table;
 import com.ukiuni.slite.util.Async;
-import com.ukiuni.slite.util.IO;
+import com.ukiuni.slite.util.ForUploadFiles;
+import com.ukiuni.slite.util.ImageUtil;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class AppendsUrlToContentActivity extends AppCompatActivity {
-    private Bitmap bitmapForView;
-    private boolean isMovie;
-    File cachedFile;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_appends_content);
         final EditText editText = (EditText) findViewById(R.id.text);
         final ImageView imageView = (ImageView) findViewById(R.id.image);
         final Spinner contentSpinner = (Spinner) findViewById(R.id.contentSpinner);
+
+        final List<ForUploadFiles> uploadSets = new ArrayList<>();
+
         Intent intent = getIntent();
         if (intent.getAction().equals(Intent.ACTION_SEND)) {
             String url = intent.getStringExtra(Intent.EXTRA_TEXT);
+            Uri imageUri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
             if (null != url) {
                 String subject = intent.getStringExtra(Intent.EXTRA_SUBJECT);
                 String text = "[" + url + "](" + url + ")\n";
@@ -67,38 +62,29 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
                 text += "\n";
                 editText.setText(text);
                 editText.setVisibility(View.VISIBLE);
-            }
-            Uri imageUri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
-            if (imageUri != null) {
+                uploadSets.add(ForUploadFiles.createEmpty());
+            } else if (imageUri != null) {
                 try {
-                    int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
-                    if (PackageManager.PERMISSION_GRANTED != permissionCheck) {
-                        ActivityCompat.requestPermissions(this,
-                                new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                                0);
-                        finish();
-                        return;
-                    }
-                    File file = new File(IO.getPath(getApplication(), imageUri));
-                    cachedFile = new File(getCacheDir(), file.getName());
-                    IO.copy(file, cachedFile);
-                    bitmapForView = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
-
-                    if (bitmapForView != null) {
-                        imageView.setImageBitmap(bitmapForView);
-                        imageView.setVisibility(View.VISIBLE);
-                    } else {
-                        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-                        retriever.setDataSource(this, imageUri);
-                        bitmapForView = retriever.getFrameAtTime(0);
-
-                        imageView.setImageBitmap(bitmapForView);
-                        imageView.setVisibility(View.VISIBLE);
-                        isMovie = true;
-                    }
-                } catch (Exception e) {
-                    Log.d("", "fail to save to cache", e);
-                    Async.makeToast(R.string.fail_to_load_image);
+                    ForUploadFiles uploadSet = ForUploadFiles.readAndCreate(imageUri);
+                    uploadSets.add(uploadSet);
+                    imageView.setImageBitmap(uploadSet.getBitmapForView());
+                    imageView.setVisibility(View.VISIBLE);
+                } catch (PermissionException | IOException e) {
+                    finish();
+                    return;
+                }
+            }
+        } else if (intent.getAction().equals(Intent.ACTION_SEND_MULTIPLE)) {
+            List<Uri> imageUris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+            for (Uri imageUri : imageUris) {
+                try {
+                    ForUploadFiles uploadSet = ForUploadFiles.readAndCreate(imageUri);
+                    uploadSets.add(uploadSet);
+                    imageView.setImageBitmap(uploadSet.getBitmapForView());
+                    imageView.setVisibility(View.VISIBLE);
+                } catch (PermissionException | IOException e) {
+                    finish();
+                    return;
                 }
             }
         }
@@ -140,90 +126,135 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
             }
         }, R.string.fail_to_get_content);
         Button button = (Button) findViewById(R.id.appendsToContentButton);
+
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 finish();
-                Async.start(new Async.Task() {
-                    Content targetContent;
-
-                    @Override
-                    public void work(Async.Handle handle) throws Throwable {
-                        Slite slite = new Slite();
-                        slite.setHost(targetContent.loadAccount.host);
-                        slite.setMyAccount(targetContent.loadAccount);
-                        if (null != bitmapForView) {
-                            int w = bitmapForView.getWidth();
-                            int h = bitmapForView.getHeight();
-                            float scale = Math.max((float) 500 / w, (float) 500 / h);
-                            int size = Math.min(w, h);
-                            Matrix matrix = new Matrix();
-                            matrix.postScale(scale, scale);
-                            Bitmap thumbnail = Bitmap.createBitmap(bitmapForView, (w - size) / 2, (h - size) / 2, size, size, matrix, true);
-                            if (isMovie) {
-                                Canvas canvas = new Canvas(thumbnail);
-                                int circleX = thumbnail.getWidth() / 10 * 9;
-                                int circleY = thumbnail.getHeight() / 10 * 9;
-                                Bitmap playBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.play);
-                                canvas.drawBitmap(playBitmap, new Rect(0, 0, playBitmap.getWidth(), playBitmap.getHeight()), new RectF(circleX, circleY, thumbnail.getWidth(), thumbnail.getHeight()), null);
-                                playBitmap.recycle();
-                            }
-                            String tumbnailUrl = slite.uploadImage(targetContent.accessKey, thumbnail);
-
-                            try (FileInputStream fileIn = new FileInputStream(cachedFile)) {
-                                final long fileSize = cachedFile.length();
-                                String contentUrl = slite.uploadImage(targetContent.accessKey, fileIn, cachedFile.getName(), new Slite.Progress() {
-                                    @Override
-                                    public void sended(int current) {
-                                        if (status != null) {
-                                            status.increaseProgress((int) ((double) (current * 100) / (double) fileSize));
-                                        }
-                                    }
-                                });
-                                editText.setText("[![" + cachedFile.getName() + "](" + tumbnailUrl + "){col-xs-12}](" + contentUrl + "){targetOverray col-xs-12 col-sm-3}");
-                            }
-
-                            cachedFile.delete();
-                            cachedFile = null;
-                        }
-                        Content content = slite.appendContent(targetContent.accessKey, editText.getText().toString());
-                        content.save();
-                    }
-
-                    private Async.Status status;
-
-                    @Override
-                    public void preExecute() {
-                        targetContent = (Content) contentSpinner.getSelectedItem();
-                        if (null != cachedFile) {
-                            status = Async.showNotifiction(getString(R.string.uploading), cachedFile.getName(), ContentViewActivity.createPendingIntent(getApplicationContext(), targetContent));
-                        }
-                    }
-
-                    @Override
-                    public void onSuccess() {
-                        Async.makeToast(R.string.success_to_put_content);
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        Async.makeToast(R.string.fail_to_put_content);
-                        Intent intent = new Intent(AppendsUrlToContentActivity.this, AppendsUrlToContentActivity.class);
-                        intent.setAction(Intent.ACTION_SEND);
-                        intent.putExtra(Intent.EXTRA_TEXT, editText.getText().toString());
-                        startActivity(intent);
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        if (status != null) {
-                            status.increaseProgress(100);
-                            status.updateTitle(R.string.success_to_put_content);
-                        }
-                    }
-                }, R.string.fail_to_put_content);
+                Content targetContent = (Content) contentSpinner.getSelectedItem();
+                uploadFileAsync(targetContent, uploadSets, editText);
             }
         });
+    }
+
+    public static interface ToStringer {
+        public void append(File file, String tumbnailUrl, String fileUrl);
+
+        public Content send(Slite slite) throws IOException;
+    }
+
+    protected void uploadFileAsync(final Content targetContent, final List<ForUploadFiles> uploadSets, final EditText editText) {
+        Async.start(new Async.Task() {
+            @Override
+            public void work(Async.Handle handle) throws Throwable {
+                Slite slite = new Slite();
+                slite.setHost(targetContent.loadAccount.host);
+                slite.setMyAccount(targetContent.loadAccount);
+                final boolean isCalendar = Content.TYPE_CALENDAR.equals(targetContent.type);
+                ToStringer toStringer;
+                if (null == uploadSets.get(0).bitmapCacheFile) {
+                    toStringer = new ToStringer() {
+                        @Override
+                        public void append(File file, String tumbnailUrl, String fileUrl) {
+                        }
+
+                        @Override
+                        public Content send(Slite slite) throws IOException {
+                            return slite.appendContent(targetContent.accessKey, editText.getText().toString());
+                        }
+                    };
+                } else if (isCalendar) {
+                    final Calendar calendar = Calendar.parse(slite.loadContent(targetContent.accessKey).article);
+                    toStringer = new ToStringer() {
+
+                        @Override
+                        public void append(File file, String tumbnailUrl, String fileUrl) {
+                            Date date = ImageUtil.picupDate(file);
+                            calendar.append(date, tumbnailUrl, fileUrl);
+                        }
+
+                        @Override
+                        public Content send(Slite slite) throws IOException {
+                            String json = calendar.toJSON();
+                            targetContent.article = json;
+                            return slite.updateContent(targetContent);
+                        }
+                    };
+                } else {
+                    toStringer = new ToStringer() {
+                        String appendString = "";
+
+                        @Override
+                        public void append(File file, String tumbnailUrl, String fileUrl) {
+                            appendString = "[![" + file.getName() + "](" + tumbnailUrl + "){col-xs-12}](" + fileUrl + "){targetOverray col-xs-12 col-sm-3}" + appendString;
+                        }
+
+                        @Override
+                        public Content send(Slite slite) throws IOException {
+                            return slite.appendContent(targetContent.accessKey, appendString);
+                        }
+                    };
+                }
+                int index = 1;
+
+                for (ForUploadFiles uploadSet : uploadSets) {
+                    Throwable throwedException = null;
+                    for (int retryCount = 0; retryCount < 3; retryCount++) {
+                        try {
+                            Bitmap bitmapForView = uploadSet.getBitmapForView();
+                            if (null != bitmapForView) {
+                                final Async.Status status = Async.showNotifiction(R.string.uploading, uploadSet.cachedFile.getName() + "(" + (index++) + "/" + uploadSets.size() + ")");
+                                Bitmap thumbnail = ImageUtil.createThumbnail(bitmapForView, uploadSet.isMovie());
+                                bitmapForView.recycle();
+                                String tumbnailUrl = slite.uploadImage(targetContent.accessKey, thumbnail);
+
+                                try (FileInputStream fileIn = new FileInputStream(uploadSet.cachedFile)) {
+                                    final long fileSize = uploadSet.cachedFile.length();
+                                    String contentUrl = slite.uploadImage(targetContent.accessKey, fileIn, uploadSet.cachedFile.getName(), new Slite.Progress() {
+                                        @Override
+                                        public void sended(int current) {
+                                            if (status != null) {
+                                                status.increaseProgress((int) (((double) current / (double) fileSize) * 100));
+                                            }
+                                        }
+                                    });
+                                    toStringer.append(uploadSet.cachedFile, tumbnailUrl, contentUrl);
+                                }
+                                uploadSet.cachedFile.delete();
+
+                                status.increaseProgress(100);
+                                status.updateTitle(R.string.success_to_put_content);
+                            }
+                            throwedException = null;
+                            break;
+                        } catch (Exception e) {
+                            throwedException = e;
+                        }
+                    }
+                    if (null != throwedException) {
+                        throw throwedException;
+                    }
+                }
+                Content content = toStringer.send(slite);
+                content.save();
+            }
+
+            @Override
+            public void onSuccess() {
+                Async.makeToast(R.string.success_to_put_content);
+            }
+
+
+            @Override
+            public void onError(Throwable e) {
+                Async.makeToast(R.string.fail_to_put_content);
+                Log.e("", "fail to put content", e);
+                Intent intent = new Intent(AppendsUrlToContentActivity.this, AppendsUrlToContentActivity.class);
+                intent.setAction(Intent.ACTION_SEND);
+                intent.putExtra(Intent.EXTRA_TEXT, editText.getText().toString());
+                startActivity(intent);
+            }
+        }, R.string.fail_to_put_content);
     }
 
     @Override
@@ -292,4 +323,6 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
             return getView(position, convertView, parent);
         }
     }
+
+
 }

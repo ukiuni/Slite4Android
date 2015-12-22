@@ -13,15 +13,18 @@ import android.renderscript.Allocation;
 import android.renderscript.RenderScript;
 import android.renderscript.ScriptIntrinsicBlur;
 import android.support.v4.app.NotificationCompat;
+import android.util.Log;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import com.ukiuni.slite.R;
+import com.ukiuni.slite.SliteApplication;
 
-import java.io.IOException;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.net.URL;
-import java.util.Random;
+import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -33,7 +36,6 @@ public class Async {
     private static Context context;
     private static Handler handler;
     private static final int TIME_BEFORE_OPEN_DIALOG = 500;
-    private static Activity currentActivity;
 
     public static void init(Context context) {
         Async.context = context;
@@ -62,10 +64,10 @@ public class Async {
         builder.setContentTitle(title)
                 .setContentText(message)
                 .setSmallIcon(R.drawable.notify_icon);
+        final int id = 123123123;//(open only one notification)new Random().nextInt();
         if (null != pendingIntent) {
             builder.setContentIntent(pendingIntent);
         }
-        final int id = new Random().nextInt();
         return new Async.Status() {
             public void increaseProgress(int percent) {
                 builder.setProgress(100, percent, false);
@@ -91,8 +93,9 @@ public class Async {
     public static Handle start(final Task task, final int... errorStringId) {
         final Handle handle = new Handle();
         ProgressDialog tmpProgress = null;
-        if (null != Async.currentActivity) {
-            tmpProgress = new ProgressDialog(Async.currentActivity);
+        final Activity currentActivity = SliteApplication.getInstance().getCurrentActivity();
+        if (null != currentActivity) {
+            tmpProgress = new ProgressDialog(currentActivity);
         }
         final ProgressDialog progressDialog = tmpProgress;
         final boolean completed = false;
@@ -163,6 +166,7 @@ public class Async {
                                 return;
                             }
                             if (null != progressDialog) {
+                                progressDialog.show();
                                 progressDialog.setContentView(R.layout.progressdialog);
                                 progressDialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
                                     @Override
@@ -172,6 +176,7 @@ public class Async {
                                 });
                                 progressDialog.getWindow().setLayout(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
                                 progressDialog.setProgressDrawable(context.getDrawable(R.drawable.tranzient));
+
                             }
                         }
                     }
@@ -187,11 +192,17 @@ public class Async {
     private static ExecutorService imageLoadExecutor = Executors.newFixedThreadPool(5);
 
     public static void setImage(final ImageView titleImage, final String imageUrl, final boolean... withBlur) {
+        if (null == imageUrl) {
+            return;
+        }
+        if (findCacheAndAttach(titleImage, imageUrl)) {
+            return;
+        }
         imageLoadExecutor.execute(new Runnable() {
             @Override
             public void run() {
                 try {
-                    URL newurl = new URL(imageUrl);
+                    URL newurl = new URL(imageUrl + "?sessionKey=" + SliteApplication.currentAccount().sessionKey);
                     final Bitmap iconBitmap = BitmapFactory.decodeStream(newurl.openConnection().getInputStream());
                     if (withBlur.length > 0 && withBlur[0]) {
                         RenderScript renderScript = RenderScript.create(context);
@@ -208,11 +219,60 @@ public class Async {
                             titleImage.setImageBitmap(iconBitmap);
                         }
                     });
-                } catch (IOException ignored) {
+                    saveCache(iconBitmap, imageUrl);
+                } catch (Exception ignored) {
+                    Log.e("", "---------- imageAttachFailed", ignored);
                 }
             }
         });
     }
+
+    private static void saveCache(Bitmap iconBitmap, String url) {
+        try (FileOutputStream out = new FileOutputStream(generateCachePath(url))) {
+            iconBitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+            weakHashMap.put(url, iconBitmap);
+        } catch (Exception e) {
+            Log.e("", "Fail to cache", e);
+        }
+    }
+
+    private static WeakHashMap<String, Bitmap> weakHashMap = new WeakHashMap<String, Bitmap>();
+
+    private static boolean findCacheAndAttach(final ImageView titleImage, String imageUrl) {
+        if (weakHashMap.containsKey(imageUrl)) {
+            titleImage.setImageBitmap(weakHashMap.get(imageUrl));
+            return true;
+        }
+        final File cacheFile = findCacheFromCacheDir(imageUrl);
+        if (null != cacheFile) {
+            imageLoadExecutor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    final Bitmap bitmap = BitmapFactory.decodeFile(cacheFile.getAbsolutePath());
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            titleImage.setImageBitmap(bitmap);
+                        }
+                    });
+                }
+            });
+        }
+        return false;
+    }
+
+    private static File findCacheFromCacheDir(String imageUrl) {
+        File file = generateCachePath(imageUrl);
+        if (file.exists()) {
+            return file;
+        }
+        return null;
+    }
+
+    private static File generateCachePath(String imageUrl) {
+        return new File(context.getCacheDir(), IO.toBase64String(imageUrl));
+    }
+
 
     public static void makeToast(int messageId) {
         makeToast(context.getResources().getString(messageId));
@@ -224,14 +284,6 @@ public class Async {
         }
         toast = Toast.makeText(context, message, Toast.LENGTH_LONG);
         toast.show();
-    }
-
-    public static void setCurrentActivity(Activity currentActivity) {
-        Async.currentActivity = currentActivity;
-    }
-
-    public static void removeCurrentActivity() {
-        Async.currentActivity = null;
     }
 
     public static class Task {

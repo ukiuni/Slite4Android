@@ -28,10 +28,10 @@ public class RegistrationIntentService extends IntentService {
         try {
             InstanceID instanceID = InstanceID.getInstance(this);
             String token = instanceID.getToken("913587589937", GoogleCloudMessaging.INSTANCE_ID_SCOPE, null);
-            Log.v(TAG, "token=" + token);
+            Log.d(TAG, "token=" + token);
             SliteApplication.getSlite().registDevice(token);
         } catch (IOException e) {
-            Log.v(TAG, "IO Exception " + e.getMessage());
+            Log.d(TAG, "IO Exception ", e);
         }
     }
 }

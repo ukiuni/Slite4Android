@@ -15,10 +15,17 @@
         android:layout_height="0px"
         android:layout_weight="1">
 
-        <ListView
-            android:id="@+id/messageListView"
+        <ScrollView
+            android:id="@+id/messageScroll"
             android:layout_width="fill_parent"
-            android:layout_height="fill_parent"/>
+            android:layout_height="fill_parent">
+
+            <LinearLayout
+                android:id="@+id/messagesView"
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:orientation="vertical"></LinearLayout>
+        </ScrollView>
     </android.support.v4.widget.SwipeRefreshLayout>
 
     <LinearLayout

@@ -3,6 +3,7 @@ package com.ukiuni.slite;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
@@ -22,11 +23,27 @@ import java.util.List;
 public class TopActivity extends SliteBaseActivity {
 
     private static final String INTENT_KEY_MYACCOUNT_ID = "INTENT_KEY_MYACCOUNT_ID";
+    private boolean loading;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.top);
+        Button createContentButton = (Button) findViewById(R.id.createContentButton);
+        createContentButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ContentEditActivity.start(TopActivity.this);
+            }
+        });
+        Button createCalendarButton = (Button) findViewById(R.id.createCalendarButton);
+        createCalendarButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                CalendarEditActivity.start(TopActivity.this, true);
+            }
+        });
+
     }
 
     @Override
@@ -35,11 +52,15 @@ public class TopActivity extends SliteBaseActivity {
 
         final ListView contentListView = (ListView) findViewById(R.id.contentListView);
         final MyAccount myAccount = new Select().from(MyAccount.class).byIds(getIntent().getLongExtra(INTENT_KEY_MYACCOUNT_ID, 0)).querySingle();
+        if (loading) {
+            return;
+        }
         Async.start(new Async.Task() {
             ContentArrayAdapter adapter;
 
             @Override
             public void work(Async.Handle handle) throws Throwable {
+                loading = true;
                 final List<Content> contents = SliteApplication.getSlite().loadMyContent();
                 for (Content content : contents) {
                     content.owner.save();
@@ -51,9 +72,15 @@ public class TopActivity extends SliteBaseActivity {
                 contentListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                     @Override
                     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                        ContentViewActivity.start(TopActivity.this, contents.get(position));
+                        Content content = contents.get(position);
+                        if (Content.TYPE_CALENDAR.equals(content.type)) {
+                            CalendarEditActivity.start(TopActivity.this, content, false);
+                        } else {
+                            ContentViewActivity.start(TopActivity.this, content);
+                        }
                     }
                 });
+                loading = false;
             }
 
             @Override
@@ -64,13 +91,6 @@ public class TopActivity extends SliteBaseActivity {
             @Override
             public void onComplete() {
 
-            }
-        });
-        Button createContentButton = (Button) findViewById(R.id.createContentButton);
-        createContentButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                ContentEditActivity.start(TopActivity.this);
             }
         });
     }
@@ -85,4 +105,12 @@ public class TopActivity extends SliteBaseActivity {
         context.startActivity(intent);
     }
 
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.menu_home) {
+            return false;
+        }
+        return super.onOptionsItemSelected(item);
+    }
 }

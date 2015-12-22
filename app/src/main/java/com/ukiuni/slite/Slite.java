@@ -2,6 +2,7 @@ package com.ukiuni.slite;
 
 import android.graphics.Bitmap;
 import android.support.annotation.NonNull;
+import android.util.Log;
 
 import com.ukiuni.slite.model.Account;
 import com.ukiuni.slite.model.Channel;
@@ -165,12 +166,15 @@ public class Slite {
         content.accessKey = contentJSON.getString("accessKey");
         content.createdAt = JSONDate.parse(contentJSON.getString("createdAt"));
         content.updatedAt = JSONDate.parse(contentJSON.getString("updatedAt"));
-
+        if (contentJSON.has("type")) {
+            content.type = contentJSON.getString("type");
+        }
         JSONObject contentBody = contentJSON.getJSONArray("ContentBodies").getJSONObject(0);
         content.imageUrl = contentBody.getString("topImageUrl");
         if (contentBody.has("article")) {
             content.article = contentBody.getString("article");
         }
+
         content.title = contentBody.getString("title");
 
         JSONObject account = contentJSON.getJSONObject("owner");
@@ -191,6 +195,7 @@ public class Slite {
         if (contentJSON.has("Contents")) {
             List<Content> contents = new ArrayList<Content>();
             JSONArray contentsArray = contentJSON.getJSONArray("Contents");
+            Log.d("", "-------contentsArray--- " + contentsArray.length());
             for (int i = 0; i < contentsArray.length(); i++) {
                 contents.add(convertContent(contentsArray.getJSONObject(i)));
             }
@@ -265,7 +270,22 @@ public class Slite {
 
     public Content createContent(String title, String article) throws IOException {
         try {
+            if (title == null) {
+                title = "";
+            }
             JSONObject contentJson = httpJ(POST, host + "/api/content/", SS.map("sessionKey", this.myAccount.sessionKey).p("title", title).p("article", article));
+            return convertContent(contentJson);
+        } catch (JSONException e) {
+            throw new IOException(e);
+        }
+    }
+
+    public Content createCalendar(String title, String article) throws IOException {
+        try {
+            if (title == null) {
+                title = "";
+            }
+            JSONObject contentJson = httpJ(POST, host + "/api/content/", SS.map("sessionKey", this.myAccount.sessionKey).p("title", title).p("article", article).p("type", Content.TYPE_CALENDAR));
             return convertContent(contentJson);
         } catch (JSONException e) {
             throw new IOException(e);
@@ -289,9 +309,6 @@ public class Slite {
         http(POST, host + "/api/groups/global/channels/" + channelAccessKey + "/messages", SS.map("sessionKey", this.myAccount.sessionKey).p("body", messageBody));
     }
 
-    public void registDevice(String token) {
-    }
-
     public static interface Progress {
         public void sended(int current);
     }
@@ -312,6 +329,8 @@ public class Slite {
 
         connection.setUseCaches(false);
         connection.setRequestMethod(POST);
+        connection.setReadTimeout(30000);
+        connection.setConnectTimeout(10000);
         connection.setDoOutput(true);
         connection.setDoInput(true);
         connection.setRequestProperty("Connection", "Keep-Alive");
@@ -419,7 +438,7 @@ public class Slite {
                                 if ("message".equals(event.type)) {
                                     messageHandle.onMessage(event.message);
                                 } else if ("historicalMessage".equals(event.type)) {
-                                    messageHandle.onHistoricalMessage(event.message);
+                                    messageHandle.onHistoricalMessage(event.messages);
                                 } else if ("join".equals(event.type)) {
                                     messageHandle.onJoin(event.account);
                                     if (event.account.id != myAccount.id) {
@@ -454,23 +473,37 @@ public class Slite {
         }
     }
 
+    public String registDevice(String deviceId) throws IOException {
+        try {
+            JSONObject notificationJson = httpJ(POST, host + "/api/account/devices", SS.map("sessionKey", this.myAccount.sessionKey).p("platform", "1").p("endpoint", deviceId));
+            return notificationJson.getString("key");
+        } catch (JSONException e) {
+            throw new IOException(e);
+        }
+    }
+
+    public void deleteDevice(String key) throws IOException {
+        http(DELETE, host + "/api/account/devices", SS.map("sessionKey", this.myAccount.sessionKey).p("key", key));
+    }
+
     public class Event {
         public Event(JSONObject jObj) {
             try {
                 this.type = jObj.getString("type");
+                if ("historicalMessage".equals(this.type)) {
+                    List<Message> messages = new ArrayList<>();
+                    JSONArray jsMessages = jObj.getJSONArray("messages");
+                    for (int i = 0; i < jsMessages.length(); i++) {
+                        JSONObject messageJObj = jsMessages.getJSONObject(i);
+                        Message message = parseMessage(messageJObj);
+                        messages.add(message);
+                    }
+                    this.messages = messages;
+                }
                 if (jObj.has("message")) {
                     JSONObject messageJObj = jObj.getJSONObject("message");
-                    this.message = new Message();
-                    this.message.body = messageJObj.getString("body");
-                    this.message.id = messageJObj.getLong("id");
-                    this.message.createdAt = JSONDate.parse(messageJObj.getString("createdAt"));
-                    this.message.updatedAt = JSONDate.parse(messageJObj.getString("updatedAt"));
-                    this.message.localOwner = myAccount;
-                    JSONObject ownerJObj = messageJObj.getJSONObject("owner");
-                    this.message.owner = new Account();
-                    this.message.owner.id = ownerJObj.getLong("id");
-                    this.message.owner.name = ownerJObj.getString("name");
-                    this.message.owner.iconUrl = ownerJObj.getString("iconUrl");
+                    Message message = parseMessage(messageJObj);
+                    this.message = message;
                 }
                 if (jObj.has("account")) {
                     JSONObject ownerJObj = jObj.getJSONObject("account");
@@ -486,9 +519,26 @@ public class Slite {
 
         public String type;
         public Message message;
+        public List<Message> messages;
         public Account account;
         public Date createdAt;
         public Date updatedAt;
+    }
+
+    @NonNull
+    private Message parseMessage(JSONObject messageJObj) throws JSONException {
+        Message message = new Message();
+        message.body = messageJObj.getString("body");
+        message.id = messageJObj.getLong("id");
+        message.createdAt = JSONDate.parse(messageJObj.getString("createdAt"));
+        message.updatedAt = JSONDate.parse(messageJObj.getString("updatedAt"));
+        message.localOwner = myAccount;
+        JSONObject ownerJObj = messageJObj.getJSONObject("owner");
+        message.owner = new Account();
+        message.owner.id = ownerJObj.getLong("id");
+        message.owner.name = ownerJObj.getString("name");
+        message.owner.iconUrl = ownerJObj.getString("iconUrl");
+        return message;
     }
 
     public static abstract class MessageHandle {
@@ -504,7 +554,7 @@ public class Slite {
 
         public abstract void onMessage(Message message);
 
-        public abstract void onHistoricalMessage(Message message);
+        public abstract void onHistoricalMessage(List<Message> message);
 
         public abstract void onReave(Account account);
 
@@ -513,14 +563,15 @@ public class Slite {
         public abstract void onDisconnect();
 
         public final void requestOlder(long lastId) {
-            socket.emit("requestMessage", SS.map("channelAccessKey", accessKey).p("idBefore", "" + lastId).toJSON());
+            this.socket.emit("requestMessage", SS.map("channelAccessKey", accessKey).p("idBefore", "" + lastId).toJSON());
         }
 
         public final void disconnect() {
             if (null != socket) {
+                this.socket.off(this.accessKey);
                 this.socket.off();
-                socket.disconnect();
-                socket.close();
+                this.socket.disconnect();
+                this.socket.close();
             }
         }
 

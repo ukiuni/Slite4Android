@@ -15,6 +15,8 @@ import java.util.Date;
  */
 @Table(databaseName = SliteDatabase.NAME)
 public class Content extends BaseModel {
+    public static String TYPE_CALENDAR = "calendar";
+    public static String TYPE_MARKDOWN = "markdown";
 
     @Column
     @PrimaryKey
@@ -31,6 +33,9 @@ public class Content extends BaseModel {
 
     @Column
     public String imageUrl;
+
+    @Column
+    public String type;
 
     @Column
     public Date createdAt;
