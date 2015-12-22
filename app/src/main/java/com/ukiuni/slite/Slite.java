@@ -473,6 +473,19 @@ public class Slite {
         }
     }
 
+    public String registDevice(String deviceId) throws IOException {
+        try {
+            JSONObject notificationJson = httpJ(POST, host + "/api/account/devices", SS.map("sessionKey", this.myAccount.sessionKey).p("platform", "1").p("endpoint", deviceId));
+            return notificationJson.getString("key");
+        } catch (JSONException e) {
+            throw new IOException(e);
+        }
+    }
+
+    public void deleteDevice(String key) throws IOException {
+        http(DELETE, host + "/api/account/devices", SS.map("sessionKey", this.myAccount.sessionKey).p("key", key));
+    }
+
     public class Event {
         public Event(JSONObject jObj) {
             try {

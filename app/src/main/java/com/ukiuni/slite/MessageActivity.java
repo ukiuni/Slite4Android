@@ -1,5 +1,6 @@
 package com.ukiuni.slite;
 
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -189,6 +190,10 @@ public class MessageActivity extends SliteBaseActivity {
         }.start();
     }
 
+    public String getChannelAccessKey() {
+        return this.channelAccessKey;
+    }
+
     private void scrollMyListViewToTop() {
         scrollMyListViewTo(0);
     }
@@ -228,5 +233,11 @@ public class MessageActivity extends SliteBaseActivity {
         });
 
         return convertView;
+    }
+
+    public static PendingIntent createPendingActivity(Context context, String channelAccessKey) {
+        Intent intent = new Intent(context, MessageActivity.class);
+        intent.putExtra(INTENT_KEY_CHANNEL_ACCESS_KEY, channelAccessKey);
+        return PendingIntent.getActivity(context, 0, intent, 0);
     }
 }

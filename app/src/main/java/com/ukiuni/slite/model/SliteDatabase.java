@@ -9,5 +9,5 @@ import com.raizlabs.android.dbflow.annotation.Database;
 public class SliteDatabase {
     public static final String NAME = "Slite";
 
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;
 }

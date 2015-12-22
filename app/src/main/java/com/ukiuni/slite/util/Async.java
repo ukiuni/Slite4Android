@@ -2,6 +2,7 @@ package com.ukiuni.slite.util;
 
 import android.app.Activity;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -54,12 +55,19 @@ public class Async {
     }
 
     public static Async.Status showNotifiction(int title, String message) {
+        return showNotifiction(context.getString(title), message, null);
+    }
+
+    public static Async.Status showNotifiction(String title, String message, PendingIntent pendingIntent) {
         final NotificationManager notifyManager = (NotificationManager) Async.context.getSystemService(Context.NOTIFICATION_SERVICE);
         final NotificationCompat.Builder builder = new NotificationCompat.Builder(Async.context);
-        builder.setContentTitle(context.getString(title))
+        builder.setContentTitle(title)
                 .setContentText(message)
                 .setSmallIcon(R.drawable.notify_icon);
         final int id = 123123123;//(open only one notification)new Random().nextInt();
+        if (null != pendingIntent) {
+            builder.setContentIntent(pendingIntent);
+        }
         return new Async.Status() {
             public void increaseProgress(int percent) {
                 builder.setProgress(100, percent, false);

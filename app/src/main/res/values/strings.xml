@@ -43,5 +43,9 @@
     <string name="title">title</string>
     <string name="fail_to_parse_calendar">Fail to parse calendar</string>
     <string name="home">home</string>
+    <string name="setting">setting</string>
+    <string name="notification">Notification</string>
+    <string name="fail_to_setup">Fail to setup</string>
+    <string name="message_has_come">Message has come</string>
 
 </resources>

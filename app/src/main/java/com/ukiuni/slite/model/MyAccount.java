@@ -36,4 +36,8 @@ public class MyAccount extends BaseModel {
 
     @Column
     public Date lastLoginedAt;
+
+
+    @Column
+    public String pushDeviceKey;
 }
