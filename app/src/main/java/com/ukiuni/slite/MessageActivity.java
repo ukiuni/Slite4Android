@@ -31,6 +31,7 @@ public class MessageActivity extends SliteBaseActivity {
 
     private static final String INTENT_KEY_CHANNEL_ACCESS_KEY = "INTENT_KEY_CHANNEL_ACCESS_KEY";
     private static final int SCROLL_BOTTOM_BUFFER = 200;
+    private static final String INTENT_KEY_TARGET_ACCOUNT_ID = "INTENT_KEY_TARGET_ACCOUNT_ID";
     private Slite.MessageHandle messageHandle;
     public ArrayList<Message> messages = new ArrayList<Message>();
     public ArrayList<Account> member = new ArrayList<Account>();
@@ -235,8 +236,9 @@ public class MessageActivity extends SliteBaseActivity {
         return convertView;
     }
 
-    public static PendingIntent createPendingActivity(Context context, String channelAccessKey) {
+    public static PendingIntent createPendingActivity(Context context, long targetAccountId, String channelAccessKey) {
         Intent intent = new Intent(context, MessageActivity.class);
+        intent.putExtra(INTENT_KEY_TARGET_ACCOUNT_ID, targetAccountId);
         intent.putExtra(INTENT_KEY_CHANNEL_ACCESS_KEY, channelAccessKey);
         return PendingIntent.getActivity(context, 0, intent, 0);
     }

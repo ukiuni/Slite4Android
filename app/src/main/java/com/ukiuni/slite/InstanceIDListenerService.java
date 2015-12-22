@@ -7,6 +7,5 @@ public class InstanceIDListenerService extends com.google.android.gms.iid.Instan
     @Override
     public void onTokenRefresh() {
         super.onTokenRefresh();
-
     }
 }
