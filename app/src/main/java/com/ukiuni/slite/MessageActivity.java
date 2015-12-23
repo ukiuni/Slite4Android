@@ -14,9 +14,11 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.raizlabs.android.dbflow.sql.language.Select;
 import com.ukiuni.slite.markdown.MarkdownView;
 import com.ukiuni.slite.model.Account;
 import com.ukiuni.slite.model.Message;
+import com.ukiuni.slite.model.MyAccount;
 import com.ukiuni.slite.util.Async;
 
 import java.io.IOException;
@@ -42,6 +44,7 @@ public class MessageActivity extends SliteBaseActivity {
     private SwipeRefreshLayout swipeRefreshLayout;
     private EditText sendText;
     private Button sendButton;
+    private Slite currentSlite;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +64,13 @@ public class MessageActivity extends SliteBaseActivity {
                 }
             }
         });
+        if (getIntent().hasExtra(INTENT_KEY_TARGET_ACCOUNT_ID)) {
+            MyAccount myAccount = new Select().from(MyAccount.class).byIds(getIntent().getLongExtra(INTENT_KEY_TARGET_ACCOUNT_ID, 0)).querySingle();
+            currentSlite = new Slite(myAccount);
+        } else {
+            currentSlite = SliteApplication.getSlite();
+        }
+
     }
 
     @Override
@@ -98,7 +108,16 @@ public class MessageActivity extends SliteBaseActivity {
                     }
                 }
                 if (first) {
-                    scrollMyListViewToBottom();
+                    new Thread() {
+                        @Override
+                        public void run() {
+                            try {
+                                Thread.sleep(1000);
+                            } catch (InterruptedException ignored) {
+                            }
+                            scrollMyListViewToBottom();
+                        }
+                    }.start();
                 } else {
                     scrollMyListViewToTop();
                 }
@@ -111,18 +130,16 @@ public class MessageActivity extends SliteBaseActivity {
 
             @Override
             public void onError(Exception e) {
-
+                Async.makeToast(R.string.fail_to_access_to_server);
             }
 
             @Override
             public void onDisconnect() {
-
             }
-
-
         };
         try {
-            SliteApplication.getSlite().listenChannel(channelAccessKey, messageHandle);
+            currentSlite.listenChannel(channelAccessKey, messageHandle);
+
             this.swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
                 @Override
                 public void onRefresh() {
@@ -153,7 +170,7 @@ public class MessageActivity extends SliteBaseActivity {
                 Async.start(new Async.Task() {
                     @Override
                     public void work(Async.Handle handle) throws Throwable {
-                        SliteApplication.getSlite().sendMessage(channelAccessKey, messageBody);
+                        currentSlite.sendMessage(channelAccessKey, messageBody);
                     }
 
                     @Override
@@ -165,11 +182,24 @@ public class MessageActivity extends SliteBaseActivity {
                 lastSentedText = messageBody;
             }
         });
-        scrollMyListViewToBottom();
+        if (messages.isEmpty()) {
+            messageHandle.requestOlder();
+        }
     }
 
     private void scrollMyListViewToBottom() {
-        scrollMyListViewTo(messagesView.getBottom());
+        messagesView.post(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                scrollMyListViewTo(messagesView.getBottom());
+            }
+        });
+
     }
 
     private void scrollMyListViewTo(final int to) {
@@ -177,7 +207,7 @@ public class MessageActivity extends SliteBaseActivity {
             @Override
             public void run() {
                 try {
-                    Thread.sleep(500);
+                    Thread.sleep(100);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -205,7 +235,6 @@ public class MessageActivity extends SliteBaseActivity {
         if (null != messageHandle) {
             messageHandle.disconnect();
         }
-        messages.clear();
     }
 
     public static void start(Context context, String channelAccessKey) {

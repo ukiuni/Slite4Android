@@ -102,8 +102,7 @@ public class GcmIntentService extends IntentService {
         vibrator.vibrate(pattern, -1);
         NotificationManager notificationManager = (NotificationManager)
                 this.getSystemService(Context.NOTIFICATION_SERVICE);
-        MessageActivity.createPendingActivity(getApplicationContext(), targetAccountId, channelAccessKey);
-        PendingIntent contentIntent = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), 0);
+        PendingIntent intent = MessageActivity.createPendingActivity(getApplicationContext(), targetAccountId, channelAccessKey);
         String title = messageBody;
         String message = fromAccountName + "@" + channelName;
         NotificationCompat.Builder builder =
@@ -115,7 +114,7 @@ public class GcmIntentService extends IntentService {
                                 .bigText(message))
                         .setContentText(message);
 
-        builder.setContentIntent(contentIntent);
+        builder.setContentIntent(intent);
         notificationManager.notify(NOTIFICATION_ID, builder.build());
     }
 }
