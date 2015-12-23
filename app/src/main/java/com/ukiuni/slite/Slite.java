@@ -2,7 +2,6 @@ package com.ukiuni.slite;
 
 import android.graphics.Bitmap;
 import android.support.annotation.NonNull;
-import android.util.Log;
 
 import com.ukiuni.slite.model.Account;
 import com.ukiuni.slite.model.Channel;
@@ -195,7 +194,6 @@ public class Slite {
         if (contentJSON.has("Contents")) {
             List<Content> contents = new ArrayList<Content>();
             JSONArray contentsArray = contentJSON.getJSONArray("Contents");
-            Log.d("", "-------contentsArray--- " + contentsArray.length());
             for (int i = 0; i < contentsArray.length(); i++) {
                 contents.add(convertContent(contentsArray.getJSONObject(i)));
             }
@@ -425,7 +423,6 @@ public class Slite {
                 public void call(Object... args) {
                     socket.emit("authorize", myAccount.sessionKey);
                     socket.emit("listenChannel", channelAccessKey);
-                    socket.emit("requestMessage", SS.map("channelAccessKey", channelAccessKey).toJSON());
                 }
             }).on(channelAccessKey, new Emitter.Listener() {
                 @Override
@@ -543,11 +540,11 @@ public class Slite {
 
     public static abstract class MessageHandle {
         private Socket socket;
-        private String accessKey;
+        private String channelAccessKey;
 
-        private void setSocket(Socket socket, String accessKey) {
+        private void setSocket(Socket socket, String channelAccessKey) {
             this.socket = socket;
-            this.accessKey = accessKey;
+            this.channelAccessKey = channelAccessKey;
         }
 
         public abstract void onJoin(Account account);
@@ -562,13 +559,22 @@ public class Slite {
 
         public abstract void onDisconnect();
 
+        public final void requestOlder() {
+            requestOlder(0);
+        }
+
         public final void requestOlder(long lastId) {
-            this.socket.emit("requestMessage", SS.map("channelAccessKey", accessKey).p("idBefore", "" + lastId).toJSON());
+            if (0 == lastId) {
+                this.socket.emit("requestMessage", SS.map("channelAccessKey", channelAccessKey).toJSON());
+            } else {
+                this.socket.emit("requestMessage", SS.map("channelAccessKey", channelAccessKey).p("idBefore", "" + lastId).toJSON());
+            }
         }
 
         public final void disconnect() {
             if (null != socket) {
-                this.socket.off(this.accessKey);
+                this.socket.emit("unListenChannel", this.channelAccessKey);
+                this.socket.off(this.channelAccessKey);
                 this.socket.off();
                 this.socket.disconnect();
                 this.socket.close();
