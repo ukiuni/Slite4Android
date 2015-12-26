@@ -240,6 +240,7 @@ public class MessageActivity extends SliteBaseActivity {
     public static void start(Context context, String channelAccessKey) {
         Intent intent = new Intent(context, MessageActivity.class);
         intent.putExtra(INTENT_KEY_CHANNEL_ACCESS_KEY, channelAccessKey);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
         context.startActivity(intent);
     }
 
@@ -269,6 +270,7 @@ public class MessageActivity extends SliteBaseActivity {
         Intent intent = new Intent(context, MessageActivity.class);
         intent.putExtra(INTENT_KEY_TARGET_ACCOUNT_ID, targetAccountId);
         intent.putExtra(INTENT_KEY_CHANNEL_ACCESS_KEY, channelAccessKey);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
         return PendingIntent.getActivity(context, 0, intent, 0);
     }
 }

@@ -278,12 +278,17 @@ public class Async {
         makeToast(context.getResources().getString(messageId));
     }
 
-    public static void makeToast(String message) {
-        if (toast != null) {
-            toast.cancel();
-        }
-        toast = Toast.makeText(context, message, Toast.LENGTH_LONG);
-        toast.show();
+    public static void makeToast(final String message) {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (toast != null) {
+                    toast.cancel();
+                }
+                toast = Toast.makeText(context, message, Toast.LENGTH_LONG);
+                toast.show();
+            }
+        });
     }
 
     public static class Task {
