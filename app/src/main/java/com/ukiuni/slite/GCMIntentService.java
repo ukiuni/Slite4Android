@@ -117,4 +117,9 @@ public class GcmIntentService extends IntentService {
         builder.setContentIntent(intent);
         notificationManager.notify(NOTIFICATION_ID, builder.build());
     }
+
+    public static final void hideNotification(Context context) {
+        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.cancel(NOTIFICATION_ID);
+    }
 }

@@ -120,7 +120,16 @@ public class IO {
         } catch (UnsupportedEncodingException ignored) {
             throw new RuntimeException(ignored);
         }
+    }
 
+    public static String retrieveUri(Context context, Uri uri) {
+        ContentResolver contentResolver = context.getContentResolver();
+        String[] columns = {MediaStore.Images.Media.DATA};
+        Cursor cursor = contentResolver.query(uri, columns, null, null, null);
+        cursor.moveToFirst();
+        String path = cursor.getString(0);
+        cursor.close();
+        return path;
     }
 
 }

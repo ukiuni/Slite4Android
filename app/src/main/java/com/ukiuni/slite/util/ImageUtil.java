@@ -13,7 +13,6 @@ import com.ukiuni.slite.R;
 import com.ukiuni.slite.SliteApplication;
 
 import java.io.File;
-import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -29,7 +28,7 @@ public class ImageUtil {
         int size = Math.min(w, h);
         Matrix matrix = new Matrix();
         matrix.postScale(scale, scale);
-        Bitmap thumbnail = Bitmap.createBitmap(srcBitmap, (w - size) / 2, (h - size) / 2, size, size, matrix, true);
+        Bitmap thumbnail = Bitmap.createBitmap(srcBitmap, (w - size) / 2, (h - size) / 2, size, size, matrix, false);
         if (isMovie) {
             Canvas canvas = new Canvas(thumbnail);
             int circleX = thumbnail.getWidth() / 10 * 9;
@@ -47,7 +46,7 @@ public class ImageUtil {
             try {
                 ExifInterface exif = new ExifInterface(file.getAbsolutePath());
                 date = new SimpleDateFormat("yyyy:MM:dd HH:mm:ss").parse(exif.getAttribute(ExifInterface.TAG_DATETIME));
-            } catch (IOException | ParseException ignored) {
+            } catch (Exception ignored) {
             }
         } else if (file.getName().toUpperCase().endsWith(".MP4")) {
             try {

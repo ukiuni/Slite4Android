@@ -175,7 +175,7 @@ public class Async {
                                     }
                                 });
                                 progressDialog.getWindow().setLayout(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-                                progressDialog.setProgressDrawable(context.getDrawable(R.drawable.tranzient));
+                               // progressDialog.setProgressDrawable(context.getDrawable(R.drawable.tranzient));
 
                             }
                         }

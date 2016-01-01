@@ -18,7 +18,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -308,7 +308,7 @@ public class Slite {
     }
 
     public static interface Progress {
-        public void sended(int current);
+        public void sended(long current);
     }
 
     public String uploadImage(String accessKey, Bitmap thumbnail, Progress... progress) throws IOException {
@@ -327,10 +327,13 @@ public class Slite {
 
         connection.setUseCaches(false);
         connection.setRequestMethod(POST);
-        connection.setReadTimeout(30000);
+        connection.setReadTimeout(300000);
         connection.setConnectTimeout(10000);
         connection.setDoOutput(true);
         connection.setDoInput(true);
+        connection.setUseCaches(false);
+        connection.setChunkedStreamingMode(1024);
+        connection.setRequestMethod("POST");
         connection.setRequestProperty("Connection", "Keep-Alive");
         connection.setRequestProperty("Cache-Control", "no-cache");
         connection.setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
@@ -350,7 +353,7 @@ public class Slite {
         if (null != thumbnail) {
             thumbnail.compress(Bitmap.CompressFormat.JPEG, 100, connection.getOutputStream());
         } else {
-            byte[] buffer = new byte[1024 * 1024];
+            byte[] buffer = new byte[1024 * 128];
             int readed = fileIn.read(buffer);
             int totalSize = 0;
             while (0 < readed) {
@@ -360,6 +363,9 @@ public class Slite {
                     currentProgress.sended(totalSize);
                 }
                 readed = fileIn.read(buffer);
+                if (0 == totalSize % 100000) {
+                    request.flush();
+                }
             }
         }
         request.writeBytes(crlf);
@@ -410,6 +416,31 @@ public class Slite {
             return object.getString("url");
         } catch (JSONException e) {
             throw new IOException(e);
+        }
+    }
+
+    private static class DataOutputStream implements Closeable {
+        OutputStream out;
+
+        public DataOutputStream(OutputStream out) {
+            this.out = out;
+        }
+
+        public void writeBytes(String data) throws IOException {
+            this.out.write(data.getBytes("UTF-8"));
+        }
+
+        public void flush() throws IOException {
+            out.flush();
+        }
+
+        public void write(byte[] data, int offset, int size) throws IOException {
+            out.write(data, offset, size);
+        }
+
+        @Override
+        public void close() throws IOException {
+            out.close();
         }
     }
 

@@ -50,25 +50,38 @@ public class ForUploadFiles {
     public static ForUploadFiles readAndCreate(Uri imageUri) throws PermissionException, IOException {
         try {
             ForUploadFiles forUploadFiles = new ForUploadFiles();
-            Bitmap bitmapForView;
+            Bitmap bitmapForView = null;
             int permissionCheck = ContextCompat.checkSelfPermission(SliteApplication.getInstance(), Manifest.permission.READ_EXTERNAL_STORAGE);
             if (PackageManager.PERMISSION_GRANTED != permissionCheck) {
                 ActivityCompat.requestPermissions(SliteApplication.getInstance().getCurrentActivity(), new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 0);
                 throw new PermissionException();
             }
             File file = new File(IO.getPath(SliteApplication.getInstance(), imageUri));
-            forUploadFiles.cachedFile = new File(SliteApplication.getInstance().getCacheDir(), file.getName());
-            IO.copy(file, forUploadFiles.cachedFile);
-            bitmapForView = MediaStore.Images.Media.getBitmap(SliteApplication.getInstance().getContentResolver(), imageUri);
+            forUploadFiles.cachedFile = file;
+            //forUploadFiles.cachedFile = new File(SliteApplication.getInstance().getCacheDir(), file.getName());
+            //TODO
+            //IO.copy(file, forUploadFiles.cachedFile);
+
+            try {
+                bitmapForView = MediaStore.Images.Media.getBitmap(SliteApplication.getInstance().getContentResolver(), imageUri);
+            } catch (IOException ignored) {
+            }
+            String path = IO.retrieveUri(SliteApplication.getInstance(), imageUri);
+            if (null == bitmapForView) {
+                try {
+                    bitmapForView = BitmapFactory.decodeFile(path);
+                } catch (Exception ignored) {
+                }
+            }
             if (null == bitmapForView) {
                 MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-                retriever.setDataSource(SliteApplication.getInstance(), imageUri);
+                retriever.setDataSource(path);
                 bitmapForView = retriever.getFrameAtTime(0);
                 forUploadFiles.isMovie = true;
             }
             forUploadFiles.bitmapCacheFile = new File(SliteApplication.getInstance().getCacheDir(), UUID.randomUUID().toString() + ".png");
             try (FileOutputStream fout = new FileOutputStream(forUploadFiles.bitmapCacheFile)) {
-                bitmapForView.compress(Bitmap.CompressFormat.PNG, 100, fout);
+                bitmapForView.compress(Bitmap.CompressFormat.PNG, 50, fout);
             } catch (Exception e) {
                 forUploadFiles.bitmapCacheFile = null;
                 throw e;

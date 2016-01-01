@@ -70,6 +70,7 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
                     imageView.setImageBitmap(uploadSet.getBitmapForView());
                     imageView.setVisibility(View.VISIBLE);
                 } catch (PermissionException | IOException e) {
+                    Log.e("", "-------content url load Error--", e);
                     finish();
                     return;
                 }
@@ -199,11 +200,12 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
 
                 for (ForUploadFiles uploadSet : uploadSets) {
                     Throwable throwedException = null;
+                    index++;
                     for (int retryCount = 0; retryCount < 3; retryCount++) {
                         try {
                             Bitmap bitmapForView = uploadSet.getBitmapForView();
                             if (null != bitmapForView) {
-                                final Async.Status status = Async.showNotifiction(R.string.uploading, uploadSet.cachedFile.getName() + "(" + (index++) + "/" + uploadSets.size() + ")");
+                                final Async.Status status = Async.showNotifiction(R.string.uploading, uploadSet.cachedFile.getName() + "(" + (index) + "/" + uploadSets.size() + ")");
                                 Bitmap thumbnail = ImageUtil.createThumbnail(bitmapForView, uploadSet.isMovie());
                                 bitmapForView.recycle();
                                 String tumbnailUrl = slite.uploadImage(targetContent.accessKey, thumbnail);
@@ -212,7 +214,7 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
                                     final long fileSize = uploadSet.cachedFile.length();
                                     String contentUrl = slite.uploadImage(targetContent.accessKey, fileIn, uploadSet.cachedFile.getName(), new Slite.Progress() {
                                         @Override
-                                        public void sended(int current) {
+                                        public void sended(long current) {
                                             if (status != null) {
                                                 status.increaseProgress((int) (((double) current / (double) fileSize) * 100));
                                             }
@@ -229,6 +231,7 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
                             break;
                         } catch (Exception e) {
                             throwedException = e;
+                            Log.e("", "--------------- error retry " + retryCount, e);
                         }
                     }
                     if (null != throwedException) {
