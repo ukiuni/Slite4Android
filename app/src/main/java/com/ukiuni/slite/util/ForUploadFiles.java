@@ -69,7 +69,9 @@ public class ForUploadFiles {
             String path = IO.retrieveUri(SliteApplication.getInstance(), imageUri);
             if (null == bitmapForView) {
                 try {
-                    bitmapForView = BitmapFactory.decodeFile(path);
+                    BitmapFactory.Options opt = new BitmapFactory.Options();
+                    opt.inSampleSize = 2;
+                    bitmapForView = BitmapFactory.decodeFile(path, opt);
                 } catch (Exception ignored) {
                 }
             }

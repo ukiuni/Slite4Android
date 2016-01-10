@@ -601,6 +601,9 @@ public class Slite {
                 this.socket.emit("requestMessage", SS.map("channelAccessKey", channelAccessKey).p("idBefore", "" + lastId).toJSON());
             }
         }
+        public final void requestNewer(long id) {
+            this.socket.emit("requestMessage", SS.map("channelAccessKey", channelAccessKey).p("idAfter", "" + id).toJSON());
+        }
 
         public final void disconnect() {
             if (null != socket) {

@@ -123,7 +123,7 @@ public class MessageActivity extends SliteBaseActivity {
                         }
                     }.start();
                 } else {
-                    scrollMyListViewToTop();
+                   // scrollMyListViewToTop();
                 }
             }
 
@@ -188,6 +188,8 @@ public class MessageActivity extends SliteBaseActivity {
         });
         if (messages.isEmpty()) {
             messageHandle.requestOlder();
+        } else {
+            messageHandle.requestNewer(messages.get(messages.size() - 1).id);
         }
     }
 
