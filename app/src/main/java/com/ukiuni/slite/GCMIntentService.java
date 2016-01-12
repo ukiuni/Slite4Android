@@ -91,6 +91,7 @@ public class GcmIntentService extends IntentService {
             channelAccessKey = messageJSObj.getJSONObject("channel").getString("accessKey");
         } catch (JSONException e) {
             Log.e("fail", "---------fail to parse notify message", e);
+            throw new RuntimeException(e);
         }
         Activity activity = SliteApplication.getInstance().getCurrentActivity();
         if (null != activity && activity instanceof MessageActivity && channelAccessKey.equals(((MessageActivity) activity).getChannelAccessKey())) {

@@ -61,6 +61,11 @@ public class MarkdownView extends WebView {
                     loadedListener.onLoaded();
                 }
             }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return false;
+            }
         });
         String html = "<!doctype html><head><style type=\"text/css\">" +
                 "<!--\n" +

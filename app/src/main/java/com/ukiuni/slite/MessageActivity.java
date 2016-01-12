@@ -14,17 +14,21 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.raizlabs.android.dbflow.sql.builder.Condition;
 import com.raizlabs.android.dbflow.sql.language.Select;
 import com.ukiuni.slite.markdown.MarkdownView;
 import com.ukiuni.slite.model.Account;
 import com.ukiuni.slite.model.Message;
 import com.ukiuni.slite.model.MyAccount;
+import com.ukiuni.slite.model.MyAccount$Table;
 import com.ukiuni.slite.util.Async;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by tito on 15/10/10.
@@ -33,12 +37,14 @@ public class MessageActivity extends SliteBaseActivity {
 
     private static final String INTENT_KEY_CHANNEL_ACCESS_KEY = "INTENT_KEY_CHANNEL_ACCESS_KEY";
     private static final int SCROLL_BOTTOM_BUFFER = 200;
+    private static final float ACCOUNT_IMAGE_ALFA_JOIN = 1.0f;
+    private static final float ACCOUNT_IMAGE_ALFA_NOT_JOIN = .2f;
     private static final String INTENT_KEY_TARGET_ACCOUNT_ID = "INTENT_KEY_TARGET_ACCOUNT_ID";
     private static final String INTENT_KEY_FROM_NOTIFICATION = "INTENT_KEY_FROM_NOTIFICATION";
     private Slite.MessageHandle messageHandle;
     public ArrayList<Message> messages = new ArrayList<Message>();
     public ArrayList<Account> member = new ArrayList<Account>();
-    public ArrayList<Account> joiningAccounts = new ArrayList<Account>();
+    public ArrayList<Long> joiningAccountsId = new ArrayList<Long>();
     private String channelAccessKey;
     private LinearLayout messagesView;
     private ScrollView messageScroll;
@@ -66,7 +72,8 @@ public class MessageActivity extends SliteBaseActivity {
             }
         });
         if (getIntent().hasExtra(INTENT_KEY_TARGET_ACCOUNT_ID)) {
-            MyAccount myAccount = new Select().from(MyAccount.class).byIds(getIntent().getLongExtra(INTENT_KEY_TARGET_ACCOUNT_ID, 0)).querySingle();
+            long id = getIntent().getLongExtra(INTENT_KEY_TARGET_ACCOUNT_ID, 0);
+            MyAccount myAccount = new Select().from(MyAccount.class).where(Condition.column(MyAccount$Table.ID).eq(id)).querySingle();
             currentSlite = new Slite(myAccount);
         } else {
             currentSlite = SliteApplication.getSlite();
@@ -83,7 +90,14 @@ public class MessageActivity extends SliteBaseActivity {
         messageHandle = new Slite.MessageHandle() {
             @Override
             public void onJoin(Account account) {
-                joiningAccounts.add(account);
+                joiningAccountsId.add(account.id);
+                if (!accountIconImageViewMap.containsKey(account.id)) {
+                    return;
+                }
+                for (ImageView accountImageView :
+                        accountIconImageViewMap.get(account.id)) {
+                    accountImageView.setAlpha(ACCOUNT_IMAGE_ALFA_JOIN);
+                }
             }
 
             @Override
@@ -123,13 +137,20 @@ public class MessageActivity extends SliteBaseActivity {
                         }
                     }.start();
                 } else {
-                   // scrollMyListViewToTop();
+                    // scrollMyListViewToTop();
                 }
             }
 
             @Override
             public void onReave(Account account) {
-                joiningAccounts.remove(account);
+                joiningAccountsId.remove(account.id);
+                if (!accountIconImageViewMap.containsKey(account.id)) {
+                    return;
+                }
+                for (ImageView accountImageView :
+                        accountIconImageViewMap.get(account.id)) {
+                    accountImageView.setAlpha(ACCOUNT_IMAGE_ALFA_JOIN);
+                }
             }
 
             @Override
@@ -250,6 +271,8 @@ public class MessageActivity extends SliteBaseActivity {
         context.startActivity(intent);
     }
 
+    Map<Long, List<ImageView>> accountIconImageViewMap = new HashMap<>();
+
     private View createMessageView(Message message) {
         LayoutInflater inflater = LayoutInflater.from(this);
         View convertView = inflater.inflate(R.layout.message_row, null);
@@ -259,6 +282,15 @@ public class MessageActivity extends SliteBaseActivity {
         TextView dateTextView = (TextView) convertView.findViewById(R.id.timeText);
         dateTextView.setText(new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(message.createdAt));
         ImageView imageView = (ImageView) convertView.findViewById(R.id.accountIconImage);
+        if (!accountIconImageViewMap.containsKey(message.owner.id)) {
+            accountIconImageViewMap.put(message.owner.id, new ArrayList<ImageView>());
+        }
+        if (joiningAccountsId.contains(message.owner.id)) {
+            imageView.setAlpha(ACCOUNT_IMAGE_ALFA_JOIN);
+        } else {
+            imageView.setAlpha(ACCOUNT_IMAGE_ALFA_NOT_JOIN);
+        }
+        accountIconImageViewMap.get(message.owner.id).add(imageView);
         Async.setImage(imageView, message.owner.iconUrl);
         MarkdownView bodyTextView = (MarkdownView) convertView.findViewById(R.id.bodyText);
         final View finalConvertView = convertView;
