@@ -119,7 +119,11 @@ public class AppendsUrlToContentActivity extends AppCompatActivity {
 
             @Override
             public void work(Async.Handle handle) throws Throwable {
-                contents = new Select().from(Content.class).orderBy(OrderBy.columns(Content$Table.UPDATEDAT).descending()).queryList();
+                if (null != getIntent().getStringExtra(Intent.EXTRA_TEXT)) {
+                    contents = new Select().from(Content.class).where(Condition.column(Content$Table.TYPE).isNot("calendar")).orderBy(OrderBy.columns(Content$Table.UPDATEDAT).descending()).queryList();
+                } else {
+                    contents = new Select().from(Content.class).orderBy(OrderBy.columns(Content$Table.UPDATEDAT).descending()).queryList();
+                }
             }
 
             @Override
