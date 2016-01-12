@@ -149,7 +149,7 @@ public class MessageActivity extends SliteBaseActivity {
                 }
                 for (ImageView accountImageView :
                         accountIconImageViewMap.get(account.id)) {
-                    accountImageView.setAlpha(ACCOUNT_IMAGE_ALFA_JOIN);
+                    accountImageView.setAlpha(ACCOUNT_IMAGE_ALFA_NOT_JOIN);
                 }
             }
 
