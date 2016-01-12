@@ -1,6 +1,8 @@
 package com.ukiuni.slite.markdown;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.util.AttributeSet;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -64,7 +66,10 @@ public class MarkdownView extends WebView {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                return false;
+                Uri uri = Uri.parse(url);
+                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                getContext().startActivity(intent);
+                return true;
             }
         });
         String html = "<!doctype html><head><style type=\"text/css\">" +
