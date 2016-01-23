@@ -67,7 +67,7 @@ public class Slite {
     public MyAccount signin(final String mail, final String password) throws IOException {
         try {
             String connectHost = this.host;
-            JSONObject respJSON = httpJ(GET, connectHost + "/api/account/signin", SS.map("mail", mail).p("password", password));
+            JSONObject respJSON = httpJ(GET, connectHost + "/api/accounts/signin", SS.map("mail", mail).p("password", password));
 
             MyAccount myAccount = new MyAccount();
             JSONObject accountJSON = respJSON.getJSONObject("account");
@@ -145,7 +145,7 @@ public class Slite {
 
     public List<Content> loadMyContent() throws IOException {
         try {
-            JSONArray contentArray = httpJA(GET, host + "/api/content", SS.map("sessionKey", this.myAccount.sessionKey));
+            JSONArray contentArray = httpJA(GET, host + "/api/contents", SS.map("sessionKey", this.myAccount.sessionKey));
             List<Content> contentList = new ArrayList<Content>(contentArray.length());
             for (int i = 0; i < contentArray.length(); i++) {
                 JSONObject contentJSON = contentArray.getJSONObject(i);
@@ -216,7 +216,7 @@ public class Slite {
 
     public Content loadContent(String accessKey) throws IOException {
         try {
-            JSONObject contentJson = httpJ(GET, host + "/api/content/" + accessKey, SS.map("sessionKey", this.myAccount.sessionKey));
+            JSONObject contentJson = httpJ(GET, host + "/api/contents/" + accessKey, SS.map("sessionKey", this.myAccount.sessionKey));
             return convertContent(contentJson);
         } catch (JSONException e) {
             throw new IOException(e);
@@ -250,7 +250,7 @@ public class Slite {
 
     public Content appendContent(String accessKey, String appendsText) throws IOException {
         try {
-            JSONObject contentJson = httpJ(PUT, host + "/api/content/" + accessKey, SS.map("sessionKey", this.myAccount.sessionKey).p("article", appendsText).p("appends", "before"));
+            JSONObject contentJson = httpJ(PUT, host + "/api/contents/" + accessKey, SS.map("sessionKey", this.myAccount.sessionKey).p("article", appendsText).p("appends", "before"));
             return convertContent(contentJson);
         } catch (JSONException e) {
             throw new IOException(e);
@@ -259,7 +259,7 @@ public class Slite {
 
     public Content updateContent(Content content) throws IOException {
         try {
-            JSONObject contentJson = httpJ(PUT, host + "/api/content/" + content.accessKey, SS.map("sessionKey", this.myAccount.sessionKey).p("title", content.title).p("article", content.article));
+            JSONObject contentJson = httpJ(PUT, host + "/api/contents/" + content.accessKey, SS.map("sessionKey", this.myAccount.sessionKey).p("title", content.title).p("article", content.article));
             return convertContent(contentJson);
         } catch (JSONException e) {
             throw new IOException(e);
@@ -271,7 +271,7 @@ public class Slite {
             if (title == null) {
                 title = "";
             }
-            JSONObject contentJson = httpJ(POST, host + "/api/content/", SS.map("sessionKey", this.myAccount.sessionKey).p("title", title).p("article", article));
+            JSONObject contentJson = httpJ(POST, host + "/api/contents/", SS.map("sessionKey", this.myAccount.sessionKey).p("title", title).p("article", article));
             return convertContent(contentJson);
         } catch (JSONException e) {
             throw new IOException(e);
@@ -283,7 +283,7 @@ public class Slite {
             if (title == null) {
                 title = "";
             }
-            JSONObject contentJson = httpJ(POST, host + "/api/content/", SS.map("sessionKey", this.myAccount.sessionKey).p("title", title).p("article", article).p("type", Content.TYPE_CALENDAR));
+            JSONObject contentJson = httpJ(POST, host + "/api/contents/", SS.map("sessionKey", this.myAccount.sessionKey).p("title", title).p("article", article).p("type", Content.TYPE_CALENDAR));
             return convertContent(contentJson);
         } catch (JSONException e) {
             throw new IOException(e);
@@ -297,7 +297,7 @@ public class Slite {
 
     public void deleteContent(Content content) throws IOException {
         try {
-            httpJ(DELETE, host + "/api/content/" + content.accessKey, SS.map("sessionKey", this.myAccount.sessionKey));
+            httpJ(DELETE, host + "/api/contents/" + content.accessKey, SS.map("sessionKey", this.myAccount.sessionKey));
         } catch (JSONException e) {
             throw new IOException(e);
         }
@@ -503,7 +503,7 @@ public class Slite {
 
     public String registDevice(String deviceId) throws IOException {
         try {
-            JSONObject notificationJson = httpJ(POST, host + "/api/account/devices", SS.map("sessionKey", this.myAccount.sessionKey).p("platform", "1").p("endpoint", deviceId));
+            JSONObject notificationJson = httpJ(POST, host + "/api/accounts/devices", SS.map("sessionKey", this.myAccount.sessionKey).p("platform", "1").p("endpoint", deviceId));
             return notificationJson.getString("key");
         } catch (JSONException e) {
             throw new IOException(e);
@@ -511,7 +511,7 @@ public class Slite {
     }
 
     public void deleteDevice(String key) throws IOException {
-        http(DELETE, host + "/api/account/devices", SS.map("sessionKey", this.myAccount.sessionKey).p("key", key));
+        http(DELETE, host + "/api/accounts/devices", SS.map("sessionKey", this.myAccount.sessionKey).p("key", key));
     }
 
     public class Event {
@@ -560,12 +560,17 @@ public class Slite {
         message.id = messageJObj.getLong("id");
         message.createdAt = JSONDate.parse(messageJObj.getString("createdAt"));
         message.updatedAt = JSONDate.parse(messageJObj.getString("updatedAt"));
+        if (messageJObj.has("type")) {
+            message.type = messageJObj.getString("type");
+        }
+        if (messageJObj.has("owner")) {
+            JSONObject ownerJObj = messageJObj.getJSONObject("owner");
+            message.owner = new Account();
+            message.owner.id = ownerJObj.getLong("id");
+            message.owner.name = ownerJObj.getString("name");
+            message.owner.iconUrl = ownerJObj.getString("iconUrl");
+        }
         message.localOwner = myAccount;
-        JSONObject ownerJObj = messageJObj.getJSONObject("owner");
-        message.owner = new Account();
-        message.owner.id = ownerJObj.getLong("id");
-        message.owner.name = ownerJObj.getString("name");
-        message.owner.iconUrl = ownerJObj.getString("iconUrl");
         return message;
     }
 
@@ -601,6 +606,7 @@ public class Slite {
                 this.socket.emit("requestMessage", SS.map("channelAccessKey", channelAccessKey).p("idBefore", "" + lastId).toJSON());
             }
         }
+
         public final void requestNewer(long id) {
             this.socket.emit("requestMessage", SS.map("channelAccessKey", channelAccessKey).p("idAfter", "" + id).toJSON());
         }
